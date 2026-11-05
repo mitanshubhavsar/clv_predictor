@@ -7,6 +7,10 @@ Questions:
   3. How skewed is it, and how concentrated is the money?
   4. Is "buys again or not" predictable from RFM? (does a zero-vs-nonzero split make sense)
 
+Note: decisions taken after this analysis are already applied in step 3:
+negatives floored at 0 (snap.target; snap.target_net keeps the original),
+no clipping of large customers. Sections 1-2 therefore look at target_net.
+
 Run:  python src/step5_target.py
 """
 import numpy as np
@@ -24,7 +28,7 @@ def composition(t: pd.Series) -> pd.Series:
 
 def negative_customers(snap: Snapshot, ledger: pd.DataFrame) -> pd.DataFrame:
     """For negative-target customers: money bought vs returned in the target window."""
-    neg = snap.target[snap.target < 0].index
+    neg = snap.target_net[snap.target_net < 0].index
     w = ledger[(ledger["InvoiceDate"] >= snap.cutoff) & (ledger["InvoiceDate"] < snap.target_end)
                & ledger["Customer ID"].isin(neg)]
     out = w.groupby(["Customer ID", "IsReturn"])["TotalPrice"].sum().unstack(fill_value=0.0)
@@ -55,7 +59,7 @@ def main() -> None:
         snap = make_snapshot(ledger, cutoff)
         t, rfm = snap.target, build_rfm(snap)
         print(f"\n================ {name} ================")
-        print("1. composition:", composition(t).to_dict())
+        print("1. composition (before flooring):", composition(snap.target_net).to_dict())
         pos = t[t > 0]
         print("   positive targets, percentiles:",
               pos.quantile([.1, .25, .5, .75, .9, .99]).round(0).to_dict())
@@ -63,11 +67,12 @@ def main() -> None:
         print("\n2. negative targets")
         neg = negative_customers(snap, ledger)
         print(neg.describe().round(0).loc[["count", "mean", "min", "max"]].to_string())
-        print(f"   sum of negatives: {t[t < 0].sum():,.0f} | mean target raw {t.mean():,.1f}"
-              f" vs floored at 0 {t.clip(lower=0).mean():,.1f}")
+        tn = snap.target_net
+        print(f"   sum of negatives: {tn[tn < 0].sum():,.0f} | mean target unfloored {tn.mean():,.1f}"
+              f" vs floored at 0 {t.mean():,.1f}")
 
         print("\n3. skew and concentration")
-        print(f"   skewness raw {t.skew():.1f} | log1p(floored) {np.log1p(t.clip(lower=0)).skew():.2f}")
+        print(f"   skewness (floored) {t.skew():.1f} | log1p(floored) {np.log1p(t).skew():.2f}")
         for k, v in concentration(t).items():
             print(f"   {k}: {v:.0%} of money")
         top10 = t.nlargest(10).index

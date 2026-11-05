@@ -3,8 +3,9 @@
 One function, make_snapshot(ledger, cutoff), returns:
   feature_rows : ledger rows in [cutoff - 12 months, cutoff)  for the customers
                  who bought in that window
-  target       : per-customer NET money kept in [cutoff, cutoff + 6 months)
-                 (0 if the customer did not buy again)
+  target       : per-customer NET money kept in [cutoff, cutoff + 6 months),
+                 floored at 0 (0 if the customer did not buy again).
+                 target_net keeps the unfloored value.
 
 Windows are half-open: the cutoff day itself belongs to the TARGET window, so
 nothing on or after the cutoff can leak into the features.
@@ -35,7 +36,8 @@ class Snapshot:
     feature_start: pd.Timestamp
     target_end: pd.Timestamp          # exclusive
     feature_rows: pd.DataFrame        # ledger rows (purchases + returns) before cutoff
-    target: pd.Series                 # index = Customer ID, value = net money kept
+    target: pd.Series                 # index = Customer ID; net money kept, FLOORED at 0 (the one we model)
+    target_net: pd.Series             # same, before flooring (can be negative; for inspection only)
 
 
 def load_ledger() -> pd.DataFrame:
@@ -57,16 +59,20 @@ def make_snapshot(ledger: pd.DataFrame, cutoff: pd.Timestamp,
 
     feature_rows = ledger[in_features & ledger["Customer ID"].isin(bought)]
 
-    # Target = net money kept in the target window; customers with no rows get 0.
-    target = (ledger[in_target & ledger["Customer ID"].isin(bought)]
-              .groupby("Customer ID")["TotalPrice"].sum()
-              .reindex(bought, fill_value=0.0)
-              .rename("target"))
-    target.index.name = "Customer ID"
+    # Net money kept in the target window; customers with no rows get 0.
+    target_net = (ledger[in_target & ledger["Customer ID"].isin(bought)]
+                  .groupby("Customer ID")["TotalPrice"].sum()
+                  .reindex(bought, fill_value=0.0)
+                  .rename("target_net"))
+    target_net.index.name = "Customer ID"
+
+    # Decision (step 5): floor at 0. A customer cannot be worth less than nothing;
+    # the negatives are refunds of earlier purchases. Nobody is clipped from above.
+    target = target_net.clip(lower=0.0).rename("target")
 
     # Leakage guard: features must end strictly before the cutoff.
     assert feature_rows["InvoiceDate"].max() < cutoff
-    return Snapshot(cutoff, feature_start, target_end, feature_rows, target)
+    return Snapshot(cutoff, feature_start, target_end, feature_rows, target, target_net)
 
 
 def describe(name: str, s: Snapshot) -> None:
@@ -77,7 +83,7 @@ def describe(name: str, s: Snapshot) -> None:
     print(f"target   : {s.cutoff.date()} -> {(s.target_end - pd.Timedelta(days=1)).date()}")
     print(f"customers (bought in feature window): {len(t):,}")
     print(f"zero target : {(t == 0).sum():,}  ({(t == 0).mean():.1%})")
-    print(f"negative    : {(t < 0).sum():,}  (cancelled more than bought in the target window)")
+    print(f"floored at 0: {(s.target_net < 0).sum():,}  (net negative: refunds exceeded purchases in the target window)")
     print(f"positive    : {(t > 0).sum():,}")
     print(f"target mean {t.mean():,.0f} | median {t.median():,.0f} | 90th pct {t.quantile(.9):,.0f} | max {t.max():,.0f}")
 

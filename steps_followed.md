@@ -194,3 +194,41 @@ The money is concentrated.
 The raw target is very skewed (skewness 19–23), and log1p makes it roughly symmetric.
 The top 10% of buying customers hold 56–58% of the target money, and the top 20% hold about 70%.
 Removing only the 10 biggest customers cuts the mean target from £712 to £588 in train, and from £958 to £757 in test. A few people can swing a money-scale score.
+
+STEP 5 Target Analysis
+Step 5: This step only analyses the target. Nothing has been changed.
+
+## What we learned
+
+- **Zeros:** 51% (train) / 42% (test) of customers buy nothing in the next 6 months. The median train target is 0.
+- **Whether they buy again is very predictable from RFM:** one-time buyers return 24% (train) of the time, customers with 11+ orders 92%. Recency tells the same story (70% for the most recent quarter vs 25% for the least recent). So "will they buy?" and "how much?" are two different questions, and a two-stage (hurdle) model is natural.
+- **Negatives:** 51 / 28 customers, almost all refunds of earlier purchases. Flooring at 0 changes the mean target by about 0.2%.
+- **Skew:** raw skewness 19-23. `log1p` makes it near-symmetric. The top 10% of buying customers hold 56-58% of the money, the top 20% about 70%.
+- **Outliers:** removing just the top 10 customers drops the mean target from 712 to 588 (train) and 958 to 757 (test). Evaluation on a raw-money scale will be sensitive to a handful of people.
+
+## Decisions to take (nothing applied yet)
+1. **Negatives:** floor at 0 or leave as is?
+2. **Scale to model:** raw money, or `log1p`, or a model that handles skew and zeros directly?
+3. **Outliers:** keep all customers (no clipping) and just report metrics with and without the top customers?
+
+**Next (step 6):** baselines (predict the mean; rank by past spend) before any machine learning, so we know what a model has to beat.
+
+
+STEP 5 decisions (target)
+
+| Question | Decision | Why |
+|---|---|---|
+| Negatives (51 train, 28 test) | Floor at 0 (`target`). The unfloored value is kept as `target_net`. | A customer is never worth less than nothing. These are refunds of earlier purchases. Changes the mean target by about 0.2%. |
+| Scale to model | Try more than one (step 7) | Raw money is what the business cares about but a few customers dominate it. log1p is stable but converts back to a typical value, not the average. Tweedie and Hurdle are built for many zeros plus a skewed tail. |
+| Outliers | Keep everyone, no clipping. Report metrics with and without the top customers. | The biggest customers are exactly who a retention campaign cares about. |
+
+Plan for step 7: four candidates on the same RFM features
+
+| # | Candidate | Trains on | Output | Weakness |
+|---|---|---|---|---|
+| 1 | Raw money (e.g. XGBoost, squared error) | target as it is | GBP directly | a few huge customers dominate the fit |
+| 2 | log1p target (e.g. Ridge) | log1p(target) | expm1 of the prediction | converts back to a typical value, not the average, so totals come out low |
+| 3 | Tweedie (XGBoost, Tweedie objective) | raw money | GBP directly | one more setting to tune |
+| 4 | Hurdle (two stages) | stage 1: buys again? stage 2: how much, given they buy | P(buy) x expected amount | two models to build and tune |
+
+How they are compared: everything is scored on the original GBP scale (log models are converted back first); metrics are RMSE / MAE / R2 in GBP, revenue capture in the top 20%, and the same metrics without the top 10 customers; choice between candidates is by cross-validation on train only; test is touched once at the end; baselines from step 6 come first.
