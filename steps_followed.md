@@ -86,3 +86,78 @@ Overall effect: gross £17.59M, returns −£0.74M, net £16.84M. That's only ab
 Per customer, it can be huge. Customer 16446 goes from £168,472 gross to £3 net, and gross spend would have made them the 8th biggest customer. By net spend they drop out of the top 8.
 28 customers have negative net spend overall.
 
+
+Deciding on Temporal Splitting
+
+My data runs from 2009-12-01 to 2011-12-09, about 24 months. Every choice below is about how to spend those 24 months, because each customer needs three things:
+
+A feature window: the history we describe them with.
+A target window: the future we predict. It must come strictly after the feature window.
+A test period: a later period the model has never seen, to judge it honestly.
+
+
+The four options
+
+| Option | How it works | Good | Bad |
+|---|---|---|---|
+| **A. 12-month features, 6-month target, two snapshots** (old project's choice) | Train: features Dec 2009–Nov 2010, target Dec 2010–May 2011. Test: features Jun 2010–May 2011, target Jun–Dec 2011. The two targets don't overlap. | Features cover a full year, so they see one whole seasonal cycle. Test is truly in the future. Uses all 24 months. | Only one training snapshot (a few thousand customers). Test target (Jun–Dec) includes the Christmas run-up, but the training target (Dec–May) doesn't line up the same way, so the two periods aren't alike. |
+| **B. Shorter features (e.g. 6 months), 6-month target, many snapshots** | Slide the window forward several times and pool the snapshots. | Much more training data, since the same customer appears several times. | Six months of history misses the yearly cycle of a Christmas-heavy retailer. The same customers repeat across snapshots, so data is less independent than it looks, which makes validation trickier. |
+| **C. 12-month features, 12-month target** | A longer horizon, closer to a true "lifetime" value. | A more meaningful CLV. | Uses all 24 months, so nothing is left for an out-of-time test. The only honest check would be a random split. |
+| **D. Random customer split on one snapshot** | Features and target from the same two periods; shuffle customers into train and test. | Simplest, and gives a large test set. | Only answers "does the model work for customers like the ones it trained on, in the same period?" It doesn't test next season. The old project started here and dropped it. |
+
+Two rules whichever option is picked
+
+1. Who counts as a customer: only people who bought during the feature window. Customers who first appear in the target window can't be predicted from history, so they're excluded.
+2. Zero is a real answer: a customer who bought in the feature window and then bought nothing in the target window has a target of 0. They must stay in. If we dropped them, the model would learn that everyone keeps buying.
+
+Example: the same idea with 5 years of transactions (hypothetical data, 2019-01-01 to 2023-12-31, 60 months)
+
+With 24 months we could only afford 2 snapshots (option A). With 60 months the same rule (12-month features, 6-month target) gives room for many snapshots, plus a separate validation set. Cutoffs are placed every 6 months so the target windows never overlap.
+
+| Role | Cutoff | Feature window (12 months) | Target window (6 months) |
+|---|---|---|---|
+| Train 1 | 2020-01-01 | 2019-01-01 .. 2019-12-31 | 2020-01-01 .. 2020-06-30 |
+| Train 2 | 2020-07-01 | 2019-07-01 .. 2020-06-30 | 2020-07-01 .. 2020-12-31 |
+| Train 3 | 2021-01-01 | 2020-01-01 .. 2020-12-31 | 2021-01-01 .. 2021-06-30 |
+| Train 4 | 2021-07-01 | 2020-07-01 .. 2021-06-30 | 2021-07-01 .. 2021-12-31 |
+| Train 5 | 2022-01-01 | 2021-01-01 .. 2021-12-31 | 2022-01-01 .. 2022-06-30 |
+| Train 6 | 2022-07-01 | 2021-07-01 .. 2022-06-30 | 2022-07-01 .. 2022-12-31 |
+| Validation (tune models, pick the winner) | 2023-01-01 | 2022-01-01 .. 2022-12-31 | 2023-01-01 .. 2023-06-30 |
+| Test (touched once, at the very end) | 2023-07-01 | 2022-07-01 .. 2023-06-30 | 2023-07-01 .. 2023-12-31 |
+
+What this example shows
+
+1. The first possible cutoff is 12 months after the data starts (2020-01-01), because every snapshot needs a full year of history. The first year is only ever used as features.
+2. Feature windows overlap between snapshots (Train 1 and Train 2 share 2019-07 .. 2019-12). That is fine: features only look backwards. Target windows must NOT overlap, and here they don't.
+3. Order is always train < validation < test in time. The model never learns from anything dated after the period it is judged on.
+4. When we predict the test snapshot (cutoff 2023-07-01), every label used for training or tuning (the validation target ends 2023-06-30) was already known on that date. This is the rule that keeps the evaluation honest.
+5. The training targets cover three Christmas seasons (2020, 2021, 2022), so the model sees more than one seasonal cycle. That fixes the biggest weakness of the 2-year version (train and test periods behaving differently). 2019 is used only as features, never as a target.
+6. Catch: the same customer now appears in several snapshots. If we cross-validate on pooled snapshots, rows of one customer must stay together in the same fold (group by Customer ID), or the validation scores look better than they are.
+
+Compare with our real data (24 months)
+
+| | Real data (24 months) | Example (60 months) |
+|---|---|---|
+| Training snapshots | 1 (cutoff 2010-12-01) | 6 |
+| Separate validation snapshot | No (CV on train only) | Yes (cutoff 2023-01-01) |
+| Test snapshot | 1 (cutoff 2011-06-01) | 1 (cutoff 2023-07-01) |
+| Christmas seasons seen in training targets | 1 | 3 |
+| Unused data at the end | 8 days | none |
+
+Train vs validation vs test
+
+| Dataset | Role |
+|---|---|
+| Train | The model learns its parameters from it (weights, trees). |
+| Validation | Used to make choices about the model: which model, which settings, which features. The model does not learn from it directly. |
+| Test | The final exam. Looked at once, after all choices are made. |
+
+Why validation is needed: training data always flatters the model, because it has already seen it. To compare models and settings fairly, score them on data they have not seen (validation) and pick the winner from that.
+
+Why test is also needed: every time we pick something because it scored well on validation, a little of that data leaks into our choices (try 200 settings, keep the best, and the best score is partly luck). Test was never used for any choice, so its score is the honest estimate. If we tweak the model after seeing the test score, test becomes a second validation set and the honest estimate is gone.
+
+Analogy: train = textbook and practice problems, validation = mock exam (we adjust how we study), test = the real exam.
+
+In our real project (24 months): no separate validation snapshot. Validation happens inside train using 5-fold cross-validation (train on 4 folds, score on the 5th, rotate, average). Test is the later-in-time snapshot (cutoff 2011-06-01). The 5-year example has room for a real validation snapshot.
+
+Caution: cross-validation on train uses random customer folds, so it only tests "customers like the training ones, same period", not "next season". A gap between CV score and test score is mostly the time shift (train 50.7% zero-spenders vs test 42.5%), not necessarily a bug.
