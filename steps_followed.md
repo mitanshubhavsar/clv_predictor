@@ -177,3 +177,20 @@ Notes:
 - Returns do **not** count as purchases for Recency/Frequency, but they **do** reduce Monetary (same netting decision as the target).
 
 The logic is in `src/step4_rfm.py`.
+
+Target Analysis
+
+What the target looks like
+Zeros are the biggest feature.
+
+51% of train customers and 42% of test customers buy nothing in the next 6 months.
+Whether they buy again is very predictable from RFM. A one-time buyer returns about 24% of the time in train, and a customer with 11+ orders about 92% of the time.
+Recency tells the same story: 70% of the most recent quarter buy again, versus 25% of the least recent.
+"Will they buy?" and "how much will they spend?" are therefore two different questions. A two-stage model that predicts both is a natural fit, and it's what the old project's "Hurdle" model does.
+Negatives are tiny. There are 51 in train and 28 in test. Almost all are refunds of goods bought earlier, with little or no new buying. Flooring them at 0 moves the mean target by about 0.2%.
+
+The money is concentrated.
+
+The raw target is very skewed (skewness 19–23), and log1p makes it roughly symmetric.
+The top 10% of buying customers hold 56–58% of the target money, and the top 20% hold about 70%.
+Removing only the 10 biggest customers cuts the mean target from £712 to £588 in train, and from £958 to £757 in test. A few people can swing a money-scale score.
