@@ -161,3 +161,19 @@ Analogy: train = textbook and practice problems, validation = mock exam (we adju
 In our real project (24 months): no separate validation snapshot. Validation happens inside train using 5-fold cross-validation (train on 4 folds, score on the 5th, rotate, average). Test is the later-in-time snapshot (cutoff 2011-06-01). The 5-year example has room for a real validation snapshot.
 
 Caution: cross-validation on train uses random customer folds, so it only tests "customers like the training ones, same period", not "next season". A gap between CV score and test score is mostly the time shift (train 50.7% zero-spenders vs test 42.5%), not necessarily a bug.
+
+# Step 4: RFM features
+
+**Goal:** turn each snapshot's feature rows into one row per customer with three numbers.
+
+| Feature | Meaning | Definition used |
+|---|---|---|
+| **R**ecency | how recently they bought | whole days from their last *purchase* to the **cutoff** (small = recent) |
+| **F**requency | how often they buy | number of distinct purchase invoices in the feature window |
+| **M**onetary | how much they spend | **net** money kept in the feature window (purchases minus returns) |
+
+Notes:
+- Recency is measured from the cutoff, not from today, so train and test are comparable.
+- Returns do **not** count as purchases for Recency/Frequency, but they **do** reduce Monetary (same netting decision as the target).
+
+The logic is in `src/step4_rfm.py`.
