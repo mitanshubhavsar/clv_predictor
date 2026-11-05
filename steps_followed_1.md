@@ -231,4 +231,4 @@ Plan for step 7: four candidates on the same RFM features
 | 3 | Tweedie (XGBoost, Tweedie objective) | raw money | GBP directly | one more setting to tune |
 | 4 | Hurdle (two stages) | stage 1: buys again? stage 2: how much, given they buy | P(buy) x expected amount | two models to build and tune |
 
-How they are compared: everything is scored on the original GBP scale (log models are converted back first); metrics are RMSE / MAE / R2 in GBP, revenue capture in the top 20%, and the same metrics without the top 10 customers; choice between candidates is by cross-validation on train only; test is touched once at the end; baselines from step 6 come first.
+How they are compared: everything is scored on the original GBP scale (log models are converted back first); metrics are the three defined in steps_followed_2.md (R2, MAE, Capture@20%), plus the same three without the top 10 customers as a robustness check; choice between candidates is by cross-validation on train only; test is touched once at the end; baselines from step 6 come first.
