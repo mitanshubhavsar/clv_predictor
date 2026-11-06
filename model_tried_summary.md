@@ -7,7 +7,7 @@ How every candidate is judged (step 7 decisions):
 - The test snapshot is not touched until a winner is chosen.
 - The bar to beat is the past-spend baseline: R2 0.75, MAE 523, Capture@20% 0.74 (train CV).
 
-Candidates: 7a Ridge on log1p, 7b XGBoost on raw GBP, 7c Tweedie, 7d Hurdle (all done; combined table at the end of section 7d).
+Candidates: 7a Ridge on log1p, 7b XGBoost on raw GBP, 7c Tweedie, 7d Hurdle (all done; combined table at the end of section 7d), then 7e the ratio idea (the fix for the giants problem; section at the end).
 
 ---
 
@@ -302,3 +302,82 @@ The rule is not "right" for every giant (it overshoots some), but being proporti
 - Predict the ratio target / Monetary, so the linear rule supplies the scale and the trees only learn the correction.
 - Add features that separate the giants (order sizes, how often they buy).
 - Use a linear model at the leaves, or blend trees with the linear rule.
+
+---
+
+## 7e. The ratio idea (predict a multiplier, not pounds)
+
+Code: `src/step7e_ratio.py`. Notebook: `notebooks/7e_ratio.ipynb`.
+
+### The problem it fixes
+7b, 7c and 7d all failed in the same place: the few giant customers (trees answer with averages, so the largest prediction was about 50,000 vs 110,668 real; see the "giants" section above).
+
+### The idea
+```
+scale      = max(Monetary, 50)            the customer's own past spend
+multiplier = future spend / scale          what the trees learn
+prediction = predicted multiplier x scale
+```
+The scale comes from the customer, so a customer with 300,000 past spend gets a big prediction even if the trees only learned "multiplier about 0.3". A constant multiplier of 0.37 IS the past-spend baseline, so this model can only improve on the baseline by correcting it with Recency and Frequency.
+
+- Floor of 50: a tiny past spend with a real future spend would give a huge multiplier, and Monetary can be <= 0 (14 customers). 73 customers are below the floor.
+- Weights: each customer is weighted by scale ** weight_power (Optuna picks weight_power between 0 and 2). Power 2 = the fit minimises squared error in GBP exactly; power 0 = every customer's multiplier counts the same.
+- Two variants (same boosted trees, different loss): squared error on the multiplier, and Tweedie on the multiplier.
+
+### What was tuned (Optuna, 250 trials per variant)
+The usual five XGBoost settings + weight_power (+ tweedie_variance_power for Tweedie).
+
+| | squared error | Tweedie |
+|---|---|---|
+| n_estimators | 50 (the minimum) | 188 |
+| max_depth | 5 | 2 |
+| learning_rate | 0.0107 (bottom of the range) | 0.0119 (bottom of the range) |
+| subsample | 0.34 | 0.77 |
+| colsample_bytree | 0.96 | 0.67 |
+| weight_power | 0.56 | 0.86 |
+| tweedie_variance_power | - | 1.50 |
+
+Optuna wants a model that barely moves away from its starting point (the constant multiplier). Best values are saved as BEST_7E_SQ and BEST_7E_TW in the script.
+
+### Results (train, 5-fold CV)
+
+| | R2 (tuning) | R2 (honest, 10 other splits) | MAE (GBP) | Capture@20% | total predicted / total actual | R2 without top 10 |
+|---|---|---|---|---|---|---|
+| past_spend | 0.75 | 0.74 | 523 | 0.739 | 1.00 | 0.55 |
+| Hurdle log+smear (7d), best tree-only | 0.56 | 0.52 | 536 | 0.746 | 0.97 | 0.49 |
+| Ratio XGBoost, squared error | 0.758 | 0.731 +- 0.018 | 518 | 0.742 | 1.01 | 0.56 |
+| Ratio XGBoost, Tweedie | 0.760 | 0.736 +- 0.023 | 508 | 0.741 | 0.99 | 0.57 |
+
+### The giants problem is fixed
+- R2 jumps from about 0.5 (7b, 7c) and 0.56 (7d) to about 0.76.
+- Largest prediction: 116,875 (squared) and 101,445 (Tweedie), vs 110,668 real maximum (was about 50,000).
+- Share of squared error from the 10 biggest customers: 54% and 55% (was 66 to 77%); the same as past spend (55%).
+
+### What the model actually learned
+Implied multiplier = prediction / scale.
+
+| | 5% | 25% | 50% | 75% | 95% |
+|---|---|---|---|---|---|
+| past_spend | 0.363 | 0.366 | 0.366 | 0.377 | 0.379 |
+| Ratio squared error | 0.326 | 0.351 | 0.369 | 0.391 | 0.461 |
+| Ratio Tweedie | 0.264 | 0.329 | 0.370 | 0.394 | 0.448 |
+| REAL (buyers only) | 0.117 | 0.280 | 0.494 | 0.881 | 2.422 |
+
+- The model's multipliers span only 0.26 to 0.45; the real ones span 0.12 to 2.4. R, F, M cannot tell which customers will be on the high or low end.
+- What it learned is a recency adjustment: mean implied multiplier by Recency quartile 0.41 (most recent), 0.39, 0.35, 0.31 (oldest). By Frequency it barely changes (0.36 to 0.38).
+- So the model = past spend, nudged up for recent buyers and down for lapsed ones.
+- Feature importance (Tweedie): Recency 0.39, Monetary 0.35, Frequency 0.26.
+
+### Is the improvement over past spend real? (paired bootstrap, 1,000 resamples; slightly optimistic because tuning used the same data)
+
+| Ratio Tweedie minus past spend | mean | 95% interval |
+|---|---|---|
+| MAE gain (GBP) | +15.3 | 5.7 to 27.7 (excludes 0: small but real, about 3%) |
+| R2 difference | +0.013 | -0.013 to 0.044 (includes 0: no clear gain) |
+| Capture@20% difference | +0.002 | -0.003 to 0.008 (a tie) |
+
+### Verdict
+The ratio idea fixed the giants problem completely, but it only MATCHES past spend; it does not clearly beat it. The one real gain is MAE (-15 GBP, about 3%), plus a slightly better R2 without the 10 biggest customers (0.57 vs 0.55). The models are no longer the limit; the INFORMATION is. To beat past spend by more, we need features that say something new about whether a customer will spend more or less than their past rate: order sizes (AOV), purchase interval, trend in spending, return rate, tenure.
+
+Standing by honest R2 (train CV): Ratio Tweedie 0.74 = Ratio squared 0.73 = past_spend 0.74 > Ridge+smearing 0.56 > Hurdle 0.52 > Tweedie 0.49 > XGBoost 0.48.
+Next: step 8, add features one at a time to the ratio model, with a measured effect each.

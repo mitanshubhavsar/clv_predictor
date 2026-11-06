@@ -117,3 +117,22 @@ Stage 1 classifier: will they buy at all? -> P(buy). Stage 2 regressor: how much
 
 STEP 7 overall: no candidate beats the past-spend rule on R2 (0.75). Standing by honest R2: past_spend 0.74 > Ridge+smearing 0.56 > Hurdle log+smear 0.52 > Hurdle raw 0.50 > Tweedie 0.49 > XGBoost 0.48 > Ridge plain 0.43 > mean 0.00. By MAE and ranking the best models (Tweedie, Hurdle) are level with past spend.
 Next (to discuss): attack the giants (predict the ratio target / Monetary; add features that separate big customers), then evaluate the chosen model on test once.
+
+STEP 7e: the ratio idea (predict a multiplier, not pounds), train CV (250 Optuna trials per variant)
+
+scale = max(Monetary, 50); multiplier = future spend / scale (what the trees learn); prediction = predicted multiplier x scale. The scale comes from the customer, so giants get big predictions automatically. A constant multiplier of 0.37 IS the past-spend baseline, so the model can only improve on it by correcting it. Customers weighted by scale ** weight_power (Optuna picks 0 to 2). Two variants: squared error and Tweedie.
+
+| | R2 (tuning) | R2 (honest) | MAE (GBP) | Capture@20% | total predicted / total actual | R2 without top 10 |
+|---|---|---|---|---|---|---|
+| past_spend | 0.75 | 0.74 | 523 | 0.739 | 1.00 | 0.55 |
+| Hurdle log+smear (7d), best tree-only | 0.56 | 0.52 | 536 | 0.746 | 0.97 | 0.49 |
+| Ratio XGBoost, squared error | 0.758 | 0.731 | 518 | 0.742 | 1.01 | 0.56 |
+| Ratio XGBoost, Tweedie | 0.760 | 0.736 | 508 | 0.741 | 0.99 | 0.57 |
+
+- The giants problem is fixed: R2 from about 0.5 to about 0.76; largest prediction 101,000-117,000 (was about 50,000) vs 110,668 real; share of error from the 10 biggest customers 54-55% (was 66-77%).
+- But it only MATCHES past spend: honest R2 0.73-0.74 vs 0.744. Paired bootstrap vs past spend: MAE gain +15 GBP (95% interval 6 to 28, small but real, about 3%); R2 +0.013 (interval -0.013 to 0.044, no clear gain); Capture@20% +0.002 (a tie).
+- Why so little: Optuna chose learning rates at the bottom of the range, so the model barely moves from the constant multiplier. What it learned is a recency adjustment: multiplier 0.41 for the most recent quartile down to 0.31 for the oldest; Frequency barely matters (0.36-0.38). The real multipliers vary far more (0.12 to 2.4 for the 5th-95th percentile) and R, F, M cannot predict who will be on the high or low end.
+- Conclusion: the models are no longer the limit; the information is. We need features that say something new: order sizes (AOV), purchase interval, trend in spending, return rate, tenure.
+
+Standing by honest R2: Ratio Tweedie 0.74 = Ratio squared 0.73 = past_spend 0.74 > Ridge+smearing 0.56 > Hurdle 0.52 > Tweedie 0.49 > XGBoost 0.48.
+Next: step 8, add features one at a time to the ratio model, each with a measured effect.
