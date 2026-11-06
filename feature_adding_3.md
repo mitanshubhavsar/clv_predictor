@@ -160,3 +160,24 @@ Consequences:
 - Going forward each new feature is screened with: fold-split table (for information) + customer bootstrap (for the verdict), via `rule_verdicts` in src/step8_features.py (rule E is the last entry).
 
 Next: 8c, spend trend (recent vs earlier months) and return rate (feature window only, by invoices).
+
+## 11. Features 4 and 5 tested: spend trend and return rate  [notebook: notebooks/8c_trend_returns.ipynb]
+
+Definitions (feature window only, before the cutoff):
+- RecentShare = gross purchase spend in the last 90 days / total gross purchase spend (0 to 1; blank only if total spend <= 0).
+- ReturnRate = return invoices / purchase invoices (by invoices, window only; fixes the old project's all-history version).
+
+Tested on top of the kept model (R, F, M + IPI + OverdueRatio), 7e settings fixed, rule E:
+
+| Added | R2 change (95% over customers) | MAE gain, GBP (95%) | Capture change | Fold splits R2 better | Rule E |
+|---|---|---|---|---|---|
+| RecentShare | +0.010 (-0.015 to +0.030) | +1.5 (-5.6 to +9.9) | +0.001 | 10/10 (t = 6.2) | reject |
+| ReturnRate | +0.003 (-0.006 to +0.010) | +0.9 (-1.7 to +4.3) | -0.000 | 5/10 | reject |
+| both | +0.014 (-0.007 to +0.035) | +1.2 (-4.8 to +8.2) | +0.001 | 10/10 | reject |
+
+Lessons:
+- RecentShare is the case that shows why we dropped rules A to C: the 10 fold splits say "better in 10/10, t = 6", so A, B and C would all keep it. But the splits reuse the same customers, so that only shows the fold assignment is not the cause. Across customers the interval for R2 spans -0.015 to +0.030 (the giants decide it) and for MAE it spans zero. We cannot tell it from noise, so it is rejected.
+- ReturnRate: no signal (about 80% of customers have 0 returns in the window). On plain R, F, M it was even significantly worse in MAE (-4.0 GBP).
+- Kept set unchanged: R, F, M + IPI + OverdueRatio (provisional).
+
+Next: 8d, tenure / product diversity (the last candidates), then re-tune once and confirm on fresh splits.

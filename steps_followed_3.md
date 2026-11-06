@@ -67,3 +67,9 @@ Keep a feature (or group) only if, by bootstrap over customers on the CV predict
 Why: A to C look only at R2 (decided by ~10 customers, and reused fold splits overstate certainty); D ignores size; E adds a size bar and still rejects AOV.
 Status: AOV rejected; IPI + OverdueRatio kept as a provisional group (re-check at the end on fresh fold splits after the final re-tune). Test set still untouched.
 Next: 8c, spend trend and return rate.
+
+STEP 8c: spend trend (RecentShare = share of spend in the last 90 days) and ReturnRate (return invoices / purchase invoices, feature window only).
+Result vs the kept model (rule E): RecentShare R2 +0.010 (-0.015 to +0.030), MAE +1.5 GBP (-5.6 to +9.9): reject. ReturnRate R2 +0.003, MAE +0.9 (-1.7 to +4.3): reject. Both together: reject.
+Lesson: RecentShare was better in 10/10 fold splits (t = 6) and rules A to C would have kept it; over customers the gain is indistinguishable from zero. Fold splits reuse the same customers, so they overstate certainty.
+Kept set unchanged: R, F, M + IPI + OverdueRatio (provisional). Notebook: 8c_trend_returns.ipynb.
+Next: 8d, tenure and product diversity.

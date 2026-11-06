@@ -53,8 +53,31 @@ def overdue_ratio(snap: Snapshot, X: pd.DataFrame) -> pd.Series:
     return (X["Recency"] / interval.clip(lower=1.0)).rename("OverdueRatio")
 
 
-FEATURES = {"AOV": aov, "IPI": ipi, "OverdueRatio": overdue_ratio}
-MAY_BE_NAN = {"IPI", "OverdueRatio"}
+RECENT_DAYS = 90
+
+
+def recent_share(snap: Snapshot, X: pd.DataFrame) -> pd.Series:
+    """Spend trend: share of the customer's gross purchase spend that falls in the
+    last RECENT_DAYS days before the cutoff (0 = nothing recent, 1 = all recent)."""
+    rows = snap.feature_rows
+    p = rows[~rows["IsReturn"]]
+    recent = p[p["InvoiceDate"] >= snap.cutoff - pd.Timedelta(days=RECENT_DAYS)]
+    total = p.groupby("Customer ID")["TotalPrice"].sum()
+    part = recent.groupby("Customer ID")["TotalPrice"].sum().reindex(total.index).fillna(0.0)
+    return (part / total.where(total > 0)).rename("RecentShare")
+
+
+def return_rate(snap: Snapshot, X: pd.DataFrame) -> pd.Series:
+    """Return invoices / purchase invoices, inside the feature window only."""
+    rows = snap.feature_rows
+    n_buy = rows[~rows["IsReturn"]].groupby("Customer ID")["Invoice"].nunique()
+    n_ret = rows[rows["IsReturn"]].groupby("Customer ID")["Invoice"].nunique()
+    return (n_ret.reindex(n_buy.index).fillna(0) / n_buy).rename("ReturnRate")
+
+
+FEATURES = {"AOV": aov, "IPI": ipi, "OverdueRatio": overdue_ratio,
+            "RecentShare": recent_share, "ReturnRate": return_rate}
+MAY_BE_NAN = {"IPI", "OverdueRatio", "RecentShare"}
 
 
 def build_features(snap: Snapshot, extra=()) -> pd.DataFrame:
