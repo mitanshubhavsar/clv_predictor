@@ -78,3 +78,15 @@ STEP 8d: Tenure (days since first purchase in window, capped at 365) and NProduc
 Rule E vs the kept model: Tenure R2 +0.017 (-0.004 to +0.044), MAE +2.2 (-3.0 to +9.0): reject (nearest miss). NProducts R2 +0.001, MAE -0.2: reject. Both: reject.
 STEP 8 SUMMARY: 7 candidates tried; only IPI + OverdueRatio kept (provisional). Past spend already carries most of the information; extra columns move MAE by about 1% at best.
 Next: re-tune once on the kept columns (250 trials), check on fresh fold splits, then score the final model once on test.
+
+STEP 8 FINAL: re-tuned the ratio Tweedie model on the kept columns (250 trials), compared on 10 fresh fold seeds (10 to 19).
+R2 / MAE / Capture: A (7e settings, R,F,M) 0.7503 / 510.8 / 0.742; B (7e settings, kept columns) 0.7417 / 506.4 / 0.748; C (re-tuned, kept columns) 0.7505 / 504.5 / 0.746.
+C vs A over customers: R2 -0.004 [-0.021, +0.012], MAE gain +4.0 GBP [-2.4, +9.7]: below the 5 GBP bar and not significant. The provisional keep of IPI + OverdueRatio is NOT confirmed (multiple-comparisons caveat).
+Recommendation: final model = A, the 7e ratio Tweedie on R, F, M only. Test set untouched.
+
+DECISION: headline model = C (user choice); A also reported.
+STEP 9, TEST (cutoff 2011-06-01, 4,326 customers, ceiling Capture 0.832), fit on train only:
+mean: R2 -0.002, MAE 1,086, Capture 0.163 | past spend: 0.707, 613, 0.739 | A (R,F,M): 0.707, 596, 0.739 | C (headline): 0.716 [0.594, 0.782], 594 [521, 683], 0.740 [0.695, 0.783].
+C vs past spend: MAE +18.9 GBP [+10.0, +29.1] (about 3%, real), R2 +0.010 [+0.001, +0.025], Capture -0.000 (same). C vs A: no trustworthy difference.
+Without the top 10 customers: R2 0.673, MAE 492. Totals under-predicted (69% of actual); 83% of squared error is the 10 biggest customers (largest actual 183,530, largest prediction 95,530).
+Train to test: modest drop, no collapse. Notebook: 9_test.ipynb.

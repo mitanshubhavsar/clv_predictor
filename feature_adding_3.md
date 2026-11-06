@@ -201,3 +201,48 @@ SUMMARY OF STEP 8 (7 candidates): only IPI + OverdueRatio kept (provisional). AO
 Honest reading: past spend already carries most of the information; extra columns move MAE by about 1% at best.
 
 Next: re-tune the ratio Tweedie model once on the kept columns (250 trials), check on fresh fold splits, compare with the untuned-for-features 7e model, and only then score the final model once on the test set.
+
+## 13. Final re-tune and the re-check of the provisional keep  [code: src/step8_final.py]
+
+Re-tuned the ratio Tweedie model on R, F, M + IPI + OverdueRatio (250 trials): tuning score 0.760 (optimistic). Best: n_estimators 50 (the lowest allowed), max_depth 2, learning_rate 0.0177, subsample 0.5816, colsample 0.7133, weight_power 0.8459, tweedie_variance_power 1.8777.
+
+Compared on 10 FRESH fold seeds (10 to 19; not used in tuning or earlier screens), mean over seeds:
+
+| Model | R2 | MAE (GBP) | Capture@20% |
+|---|---|---|---|
+| A: 7e settings, R, F, M | 0.7503 | 510.8 | 0.7416 |
+| B: 7e settings, kept columns | 0.7417 | 506.4 | 0.7478 |
+| C: re-tuned, kept columns | 0.7505 | 504.5 | 0.7456 |
+
+C minus A, bootstrap over customers: R2 -0.0035 [-0.021, +0.012]; MAE gain +4.0 GBP [-2.4, +9.7]; Capture +0.004 [-0.001, +0.011].
+
+Reading:
+- The provisional keep is NOT confirmed. On fresh splits and after re-tuning, the pair's MAE gain is +4.0 GBP (below the 5 GBP bar) and its interval includes 0, so rule E would now reject it. This is the multiple-comparisons caveat playing out: the earlier "just significant" MAE gain was partly luck.
+- R2 is the same (0.7503 vs 0.7505) and the ranking is the same. Two extra columns, one 35% blank, bring nothing we can trust.
+- Recommendation: final model = A (R, F, M with the 7e settings): simpler, equal accuracy, no re-tuning needed. Test set still untouched.
+
+## 14. DECISION: headline model = C  [code: src/step9_test.py, notebook: notebooks/9_test.ipynb]
+
+User choice: C (ratio Tweedie re-tuned on R, F, M + IPI + OverdueRatio) as headline model. Reason: C is never worse than A and slightly ahead on MAE; the evidence cannot separate them. I had preferred A for simplicity and because the pair no longer passed rule E on fresh splits; the choice is recorded as a user decision, and the test result below is reported for both.
+
+## 15. THE test evaluation (test snapshot, cutoff 2011-06-01, 4,326 customers, 43% zeros, ceiling for Capture@20% 0.832)
+
+Fit on train only; 95% bootstrap intervals over test customers.
+
+| Model | R2 | MAE (GBP) | Capture@20% | R2 w/o top 10 | MAE w/o top 10 |
+|---|---|---|---|---|---|
+| mean | -0.002 | 1,086 | 0.163 | -0.000 | 887 |
+| past spend | 0.707 [0.575, 0.776] | 613 [535, 703] | 0.739 [0.695, 0.782] | 0.631 | 511 |
+| A: ratio Tweedie, R,F,M | 0.707 [0.600, 0.767] | 596 [521, 685] | 0.739 [0.697, 0.782] | 0.671 | 492 |
+| C: ratio Tweedie, +pair (HEADLINE) | 0.716 [0.594, 0.782] | 594 [521, 683] | 0.740 [0.695, 0.783] | 0.673 | 492 |
+
+Paired, over test customers:
+- C minus past spend: R2 +0.010 [+0.001, +0.025]; MAE gain +18.9 GBP [+10.0, +29.1] (about 3%); Capture -0.000 [-0.009, +0.007].
+- C minus A: R2 +0.008 [-0.013, +0.021]; MAE gain +1.8 GBP [-3.3, +7.5]; Capture -0.002 [-0.011, +0.006].
+
+Reading:
+- The model beats past spend on MAE with a real (small) margin, is barely ahead on R2, and ranks customers exactly as well. It does not beat past spend on Capture@20%.
+- C and A are statistically the same on test, as on train.
+- Train to test: R2 0.75 to 0.72, Capture 0.746 to 0.740: a modest drop, no collapse. MAE rises (505 to 594) because test customers spend more.
+- Predicted total money is 69% of actual: under-prediction. Largest actual 183,530, largest prediction 95,530; 83% of C's squared error comes from the 10 biggest customers. Giants are still the weakness.
+- Honest summary: after 9 steps the model improves on "0.37 x past spend" by about 3% in MAE. The business value is in the framework (leak-free split, honest evaluation), not a big accuracy jump.
