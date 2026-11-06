@@ -181,3 +181,23 @@ Lessons:
 - Kept set unchanged: R, F, M + IPI + OverdueRatio (provisional).
 
 Next: 8d, tenure / product diversity (the last candidates), then re-tune once and confirm on fresh splits.
+
+## 12. Features 6 and 7 tested: tenure and product diversity  [notebook: notebooks/8d_tenure_products.ipynb]
+
+- Tenure = days from the first purchase inside the feature window to the cutoff (capped at 365, as older history is not visible). NProducts = distinct stock codes bought in the window.
+
+Tested on top of the kept model (R, F, M + IPI + OverdueRatio), rule E:
+
+| Added | R2 change (95% over customers) | MAE gain, GBP (95%) | Capture change | Fold splits R2 better | Rule E |
+|---|---|---|---|---|---|
+| Tenure | +0.017 (-0.004 to +0.044) | +2.2 (-3.0 to +9.0) | +0.002 | 10/10 | reject |
+| NProducts | +0.001 (-0.010 to +0.008) | -0.2 (-3.1 to +2.8) | +0.000 | 7/10 | reject |
+| both | +0.012 (-0.003 to +0.042) | -0.2 (-3.9 to +3.9) | +0.001 | 10/10 | reject |
+
+- Tenure is the nearest miss (R2 interval just touches 0; MAE not clearly better). Same pattern as RecentShare: splits say 10/10, customers say "cannot tell".
+- NProducts: nothing.
+
+SUMMARY OF STEP 8 (7 candidates): only IPI + OverdueRatio kept (provisional). AOV, RecentShare, ReturnRate, Tenure, NProducts rejected.
+Honest reading: past spend already carries most of the information; extra columns move MAE by about 1% at best.
+
+Next: re-tune the ratio Tweedie model once on the kept columns (250 trials), check on fresh fold splits, compare with the untuned-for-features 7e model, and only then score the final model once on the test set.

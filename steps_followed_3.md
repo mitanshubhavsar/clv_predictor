@@ -73,3 +73,8 @@ Result vs the kept model (rule E): RecentShare R2 +0.010 (-0.015 to +0.030), MAE
 Lesson: RecentShare was better in 10/10 fold splits (t = 6) and rules A to C would have kept it; over customers the gain is indistinguishable from zero. Fold splits reuse the same customers, so they overstate certainty.
 Kept set unchanged: R, F, M + IPI + OverdueRatio (provisional). Notebook: 8c_trend_returns.ipynb.
 Next: 8d, tenure and product diversity.
+
+STEP 8d: Tenure (days since first purchase in window, capped at 365) and NProducts (distinct stock codes).
+Rule E vs the kept model: Tenure R2 +0.017 (-0.004 to +0.044), MAE +2.2 (-3.0 to +9.0): reject (nearest miss). NProducts R2 +0.001, MAE -0.2: reject. Both: reject.
+STEP 8 SUMMARY: 7 candidates tried; only IPI + OverdueRatio kept (provisional). Past spend already carries most of the information; extra columns move MAE by about 1% at best.
+Next: re-tune once on the kept columns (250 trials), check on fresh fold splits, then score the final model once on test.

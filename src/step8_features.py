@@ -75,7 +75,21 @@ def return_rate(snap: Snapshot, X: pd.DataFrame) -> pd.Series:
     return (n_ret.reindex(n_buy.index).fillna(0) / n_buy).rename("ReturnRate")
 
 
-FEATURES = {"AOV": aov, "IPI": ipi, "OverdueRatio": overdue_ratio,
+def tenure(snap: Snapshot, X: pd.DataFrame) -> pd.Series:
+    """Days from the customer's first purchase INSIDE the feature window to the cutoff
+    (so capped at the window length: it cannot see older history)."""
+    p = snap.feature_rows[~snap.feature_rows["IsReturn"]]
+    first = p.groupby("Customer ID")["InvoiceDate"].min()
+    return ((snap.cutoff - first).dt.days).rename("Tenure")
+
+
+def n_products(snap: Snapshot, X: pd.DataFrame) -> pd.Series:
+    """Product diversity: number of distinct stock codes bought in the window."""
+    p = snap.feature_rows[~snap.feature_rows["IsReturn"]]
+    return p.groupby("Customer ID")["StockCode"].nunique().rename("NProducts")
+
+
+FEATURES = {"Tenure": tenure, "NProducts": n_products, "AOV": aov, "IPI": ipi, "OverdueRatio": overdue_ratio,
             "RecentShare": recent_share, "ReturnRate": return_rate}
 MAY_BE_NAN = {"IPI", "OverdueRatio", "RecentShare"}
 
