@@ -61,4 +61,23 @@ STEP 7b: XGBoost on raw GBP, train CV (250 Optuna trials; tuned: n_estimators, m
 - Feature importance: Frequency 0.54, Monetary 0.41, Recency 0.05.
 
 Standing by R2 (train CV): past_spend 0.75 > Ridge+smearing 0.55 > XGBoost 0.50 (honest 0.48) > Ridge plain 0.40 > mean 0.00.
-Next: 7c Tweedie, then 7d Hurdle. Ideas for the giants problem, to discuss later: predict the ratio target / Monetary; add features that separate big customers.
+
+STEP 7c: XGBoost with the Tweedie objective, train CV (250 Optuna trials; tuned: the 5 XGBoost settings + tweedie_variance_power)
+
+Tweedie = the same boosted trees with a loss built for "many exact zeros plus a long right tail". Predictions are never negative, and errors are weighted relative to customer size.
+
+| | R2 | MAE (GBP) | Capture@20% | total predicted / total actual | R2 without top 10 |
+|---|---|---|---|---|---|
+| past_spend | 0.75 | 523 | 0.74 | 1.00 | 0.55 |
+| Ridge on log1p + smearing (7a) | 0.55 | 575 | 0.72 | 0.99 | 0.50 |
+| XGBoost raw GBP (7b) | 0.50 | 600 | 0.71 | 1.00 | 0.32 |
+| XGBoost Tweedie (7c) | 0.51 (honest 0.49 +- 0.01) | 534 | 0.74 | 0.92 | 0.54 |
+
+- Best settings: 395 very shallow trees (depth 2, the minimum allowed), learning rate 0.014, variance power 1.57. A simple model; even depth 1 might do as well.
+- Best model on MAE (534) and ties past spend on ranking (0.744 vs 0.739). On par with past spend once the 10 biggest customers are removed (R2 0.54 vs 0.55), far above 7b (0.32). First candidate that is competitive with the spreadsheet rule for the typical customer.
+- But R2 stays near 0.5: still a tree model, it cannot predict the giants (largest prediction about 39,000 vs 110,668 actual; 76% of its squared error comes from the 10 biggest customers).
+- Under-predicts the total by 8% (0.92).
+- By our rule (R2 picks the winner) past spend still leads; among models Ridge+smearing (0.55) is ahead of Tweedie (0.51).
+
+Standing by R2 (train CV): past_spend 0.75 > Ridge+smearing 0.55 > Tweedie 0.51 (honest 0.49) > XGBoost 0.50 (honest 0.48) > Ridge plain 0.40 > mean 0.00.
+Next: 7d Hurdle. Ideas for the giants problem, to discuss later: predict the ratio target / Monetary; add features that separate big customers.

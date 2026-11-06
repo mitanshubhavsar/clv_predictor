@@ -7,7 +7,7 @@ How every candidate is judged (step 7 decisions):
 - The test snapshot is not touched until a winner is chosen.
 - The bar to beat is the past-spend baseline: R2 0.75, MAE 523, Capture@20% 0.74 (train CV).
 
-Candidates: 7a Ridge on log1p (done), 7b XGBoost on raw GBP (done), 7c Tweedie, 7d Hurdle.
+Candidates: 7a Ridge on log1p (done), 7b XGBoost on raw GBP (done), 7c Tweedie (done), 7d Hurdle.
 
 ---
 
@@ -130,3 +130,55 @@ Does not beat past spend. Not the winner. Ideas to fix the giants problem (not t
 
 Standing by R2 (train CV): past_spend 0.75 > Ridge+smearing 0.55 > XGBoost 0.50 (honest estimate 0.48) > Ridge plain 0.40 > mean 0.00.
 Next: 7c Tweedie.
+
+---
+
+## 7c. XGBoost with the Tweedie objective
+
+Code: `src/step7c_tweedie.py`. Notebook: `notebooks/7c_tweedie.ipynb`.
+
+### What is different from 7b
+Same boosted trees, different loss function (what the model tries to minimise). 7b minimised squared error in GBP. Tweedie assumes the target looks like "many exact zeros plus a long right tail", which is what our 6-month spend looks like.
+- Predictions are never negative (the trees work on a log scale internally and the model predicts exp(score)).
+- Errors are weighted relative to the size of the customer instead of every GBP counting the same, so the giants dominate the loss less.
+
+### What was tuned: six hyperparameters (Optuna, 250 trials)
+
+| Setting | Meaning | Range | Best |
+|---|---|---|---|
+| n_estimators | number of trees | 50 to 500 | 395 |
+| max_depth | how deep each tree can go | 2 to 6 | 2 (at the bottom edge) |
+| learning_rate | size of each tree's correction | 0.01 to 0.3 (log) | 0.014 |
+| subsample | share of customers each tree sees | 0.3 to 1.0 | 0.996 (at the top edge) |
+| colsample_bytree | share of features each tree sees | 0.5 to 1.0 | 0.76 |
+| tweedie_variance_power | how zeros and spread are treated: near 1 = count-like, zero-friendly; near 2 = heavy-tailed positive amounts | 1.01 to 1.99 | 1.57 |
+
+The best model is simple: 395 very shallow trees. max_depth 2 is the minimum allowed, so even depth 1 might do as well; the model does not want complexity.
+
+### Results (train, 5-fold CV)
+
+| | R2 | MAE (GBP) | Capture@20% | total predicted / total actual | R2 without top 10 |
+|---|---|---|---|---|---|
+| mean | 0.00 | 944 | 0.17 | 1.00 | -0.01 |
+| past_spend | 0.75 | 523 | 0.74 | 1.00 | 0.55 |
+| Ridge on log1p + smearing (7a) | 0.55 | 575 | 0.72 | 0.99 | 0.50 |
+| XGBoost raw GBP (7b) | 0.50 | 600 | 0.71 | 1.00 | 0.32 |
+| XGBoost Tweedie (7c) | 0.51 | 534 | 0.74 | 0.92 | 0.54 |
+
+Honest estimate (same settings on 10 other fold splits): R2 0.487 +- 0.013 (range 0.471 to 0.520), vs 0.508 on the split Optuna saw. A smaller gap than 7b had (0.503 vs 0.478), probably because Tweedie settled on a simple model.
+
+### Why the three metrics disagree
+- Tweedie is the best model on MAE (534; 7b 600; 7a 575) and ties past spend on ranking (0.744 vs 0.739), but its R2 (0.51) is not the highest.
+- MAE is the typical miss; R2 is dominated by the giants. Tweedie is still a tree model and cannot predict the giants: its largest prediction is about 39,000 while real spend reaches 110,668; 76% of its squared error comes from the 10 biggest customers (past spend 55%, 7b 66%, 7a 72%).
+- For the other ~4,200 customers it is the best model of all. Without the 10 biggest customers its R2 (0.54) is on par with past spend (0.55) and far above 7b (0.32).
+- It under-predicts the total by 8% (0.92); 7b is on target and 7a smearing within 1%.
+- Feature importance: Monetary 0.52, Frequency 0.42, Recency 0.06.
+
+### In plain words
+The Tweedie loss fixed a lot of 7b's problems (MAE 600 -> 534, R2 without the giants 0.32 -> 0.54) just by describing the target's shape better. It is the first candidate that is competitive with the spreadsheet rule for the typical customer. Its weakness is the one all tree models share here: the few giants.
+
+### Verdict
+By our rule (R2 picks the winner) past spend still leads, and among the models Ridge + smearing (0.55) is ahead of Tweedie (0.51). Tweedie wins on MAE and ranking.
+
+Standing by R2 (train CV): past_spend 0.75 > Ridge+smearing 0.55 > Tweedie 0.51 (honest 0.49) > XGBoost 0.50 (honest 0.48) > Ridge plain 0.40 > mean 0.00.
+Next: 7d Hurdle.
