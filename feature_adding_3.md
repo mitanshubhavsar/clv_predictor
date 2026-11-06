@@ -90,3 +90,73 @@ A rule is a trade-off between letting a useless feature through and missing a he
 Alternative rule that uses the SIZE of the gain, not just how often it is positive: keep if the mean paired gain is positive with paired t >= 2 on R2, and MAE is not clearly worse. AOV's t is -8 (clear reject). It would accept a small but consistent gain (for example +0.005 R2 with low noise) that the 9-of-10 rule might reject.
 
 Decision: wait for a borderline feature. Next: purchase interval and overdue ratio (8b), then compare the rules on a second example.
+
+---
+
+## 8. Features 2 and 3 tested: purchase interval and overdue ratio  [notebook: notebooks/8b_interval.ipynb]
+
+- IPI = mean days between consecutive purchase DAYS. OverdueRatio = Recency / IPI (above 1 = later than the customer's own rhythm).
+- 35% of customers (one purchase day) have no interval: left blank, XGBoost handles missing values itself, so there is no fill value to leak from train to test (Frequency == 1 already flags them).
+- Signal check: IPI alone says nothing about the real multiplier among buyers (rank correlation +0.004); OverdueRatio +0.10. But OverdueRatio does separate who comes back: share who buy again 65-70% (early or on time), 59% (1-2x overdue), 52% (2-4x), 34% (more than 4x).
+
+Fold-split screen (7e settings fixed, same 10 splits, new minus base):
+
+| Variant | R2 change | R2 better in | MAE gain (GBP) | MAE better in | Capture@20% change |
+|---|---|---|---|---|---|
+| + IPI | -0.011 | 2/10 | -0.01 | 4/10 | +0.005 |
+| + OverdueRatio | -0.010 | 0/10 | +0.9 | 7/10 | +0.001 |
+| + IPI + OverdueRatio | -0.013 | 0/10 | +4.3 | 10/10 | +0.005 (10/10) |
+
+The metrics disagree for the pair: MAE and ranking better, R2 worse.
+
+Why R2 drops: the giants. The squared error of the 10 biggest customers is higher with the new features in all 10 splits; for the other 4,232 customers it is lower in most splits. Without the top 10, the R2 change is only -0.004 (better in 4/10 splits), about zero.
+
+Bootstrap OVER CUSTOMERS (the 10 fold splits reuse the same customers, so their spread only measures fold-assignment noise; this measures which-customers noise):
+
+| Feature set | R2 change (95% interval) | MAE gain GBP (95% interval) | Capture@20% change (95% interval) |
+|---|---|---|---|
+| + AOV | -0.026 (-0.063 to 0.000) | -6.1 (-12.6 to -0.1) worse | +0.001 (-0.003 to 0.004) |
+| + IPI | -0.003 (-0.020 to 0.014) | +1.4 (-3.1 to 5.4) | +0.005 (-0.001 to 0.011) |
+| + OverdueRatio | -0.007 (-0.020 to 0.004) | +1.5 (-2.5 to 5.7) | +0.002 (-0.003 to 0.006) |
+| + IPI + OverdueRatio | -0.005 (-0.020 to 0.008) | +5.7 (+1.1 to +10.2) real | +0.005 (-0.002 to 0.012) |
+
+The capture "t = 10" from the fold splits is NOT significant over customers.
+
+## 9. The keep rule, compared on real examples (decision to take)
+
+| Rule | AOV | IPI | OverdueRatio | IPI + OverdueRatio |
+|---|---|---|---|---|
+| A: R2 better in >= 9/10 splits | reject | reject | reject | reject |
+| B: R2 better in >= 8/10 splits | reject | reject | reject | reject |
+| C: R2 mean > 0, paired t >= 2, MAE not clearly worse | reject | reject | reject | reject |
+| D: R2 or MAE significantly better over customers, none significantly worse | reject | reject | reject | KEEP |
+| E: D plus a practical size (MAE gain >= 5 GBP or R2 >= +0.005) | reject | reject | reject | KEEP |
+
+- A to C look only at R2, and R2 here is decided by about ten customers and by fold assignment. They are blind to a small, real gain in typical-customer error (MAE) and they overstate how certain 10 reused splits are.
+- D and E judge each metric by a bootstrap over customers, require that nothing gets significantly worse, and (E) a minimum practical size. They are the more honest of the five, and they still reject AOV (its MAE is significantly worse).
+- Caveat (multiple comparisons): four variants were tried and the pair's MAE interval only just excludes 0 (+1.1 GBP at the low end). Treat the pair as a PROVISIONAL KEEP, to be re-checked after all features are in (final re-tune and fresh fold splits).
+- Honest size of the gain: about 1% of MAE for two extra columns (35% of one of them blank).
+
+Next: 8c, spend trend and return rate.
+
+## 10. DECISION: rule E adopted as the keep rule
+
+Decision (user): adopt rule E for every remaining feature.
+
+Rule E, in words: a feature (or feature group) is KEPT only if, on the 5-fold CV predictions of the train set with the 7e settings fixed:
+1. R2 or MAE is significantly BETTER by a paired bootstrap over customers (95% interval entirely above 0), and
+2. neither R2 nor MAE is significantly WORSE (95% interval entirely below 0), and
+3. the gain has a practical size: mean MAE gain >= 5 GBP or mean R2 gain >= +0.005.
+
+Why E and not A to C or D:
+- A to C judge only R2, which is decided by about ten customers and by fold assignment; they cannot see a small real gain for typical customers, and fold-split t-values overstate certainty because the splits reuse the same customers.
+- D has the right logic but accepts gains of any size; E adds a practical-size bar so a statistically real but trivial gain is not paid for with an extra column.
+- E still rejects AOV (MAE significantly worse), so it is not simply "lenient".
+
+Consequences:
+- IPI + OverdueRatio: KEEP, but PROVISIONAL (four variants tried, MAE interval only just above 0; multiple-comparisons caveat). Re-check at the end on fresh fold splits after the final re-tune.
+- AOV: rejected. IPI alone and OverdueRatio alone: not kept on their own (the pair is kept as one group).
+- Test set stays untouched until the final model is chosen.
+- Going forward each new feature is screened with: fold-split table (for information) + customer bootstrap (for the verdict), via `rule_verdicts` in src/step8_features.py (rule E is the last entry).
+
+Next: 8c, spend trend (recent vs earlier months) and return rate (feature window only, by invoices).

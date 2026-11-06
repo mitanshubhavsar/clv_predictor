@@ -15,7 +15,7 @@ Run:  python src/step8_features.py
 import numpy as np
 import pandas as pd
 
-from metrics import evaluate
+from metrics import evaluate, r2, revenue_capture
 from step3_split import Snapshot, TRAIN_CUTOFF, load_ledger, make_snapshot
 from step4_rfm import build_rfm
 from step7b_xgboost import oof_with_seed
@@ -24,7 +24,7 @@ from step7e_ratio import BEST_7E_TW, RatioXGB
 N_SPLITS = 10
 
 
-def aov(snap: Snapshot) -> pd.Series:
+def aov(snap: Snapshot, X: pd.DataFrame) -> pd.Series:
     """Average order value = gross purchase spend / number of purchase invoices.
     (Gross, not net of returns: it describes the size of an ORDER.)"""
     rows = snap.feature_rows
@@ -34,14 +34,35 @@ def aov(snap: Snapshot) -> pd.Series:
     return (spend / orders).rename("AOV")
 
 
-FEATURES = {"AOV": aov}
+def ipi(snap: Snapshot, X: pd.DataFrame) -> pd.Series:
+    """Purchase interval = mean days between consecutive purchase DAYS.
+    Customers who bought on only one day have no interval: left as NaN, which
+    XGBoost handles natively (no fill value, so nothing to leak from train to
+    test; Frequency == 1 already flags these customers)."""
+    rows = snap.feature_rows
+    d = rows[~rows["IsReturn"]][["Customer ID", "InvoiceDate"]].copy()
+    d["InvoiceDate"] = d["InvoiceDate"].dt.normalize()
+    d = d.drop_duplicates().sort_values(["Customer ID", "InvoiceDate"])
+    gap = d.groupby("Customer ID")["InvoiceDate"].diff().dt.days
+    return gap.groupby(d["Customer ID"]).mean().rename("IPI")  # NaN if a single purchase day
+
+
+def overdue_ratio(snap: Snapshot, X: pd.DataFrame) -> pd.Series:
+    """Recency / interval: above 1 = the customer is later than their own usual rhythm."""
+    interval = ipi(snap, X).reindex(X.index)
+    return (X["Recency"] / interval.clip(lower=1.0)).rename("OverdueRatio")
+
+
+FEATURES = {"AOV": aov, "IPI": ipi, "OverdueRatio": overdue_ratio}
+MAY_BE_NAN = {"IPI", "OverdueRatio"}
 
 
 def build_features(snap: Snapshot, extra=()) -> pd.DataFrame:
     X = build_rfm(snap)
     for name in extra:
-        X[name] = FEATURES[name](snap).reindex(X.index)
-    assert not X.isna().any().any(), "missing values in features"
+        X[name] = FEATURES[name](snap, X).reindex(X.index)
+    must_be_complete = [c for c in X.columns if c not in MAY_BE_NAN]
+    assert not X[must_be_complete].isna().any().any(), "missing values in features"
     return X
 
 
@@ -63,18 +84,63 @@ def screen(X_base: pd.DataFrame, X_new: pd.DataFrame, y: pd.Series, n_splits: in
     return pd.DataFrame(rows).set_index("seed")
 
 
+def summarize(t: pd.DataFrame) -> pd.DataFrame:
+    """Mean, spread, splits improved and paired t for the three paired columns."""
+    rows = {}
+    for col, label in (("R2 diff", "R2"), ("MAE gain", "MAE gain (GBP)"), ("Cap diff", "Capture@20%")):
+        d = t[col]
+        rows[label] = {"mean": d.mean(), "sd": d.std(), "improved": int((d > 0).sum()),
+                       "t": d.mean() / (d.std() / np.sqrt(len(d)))}
+    return pd.DataFrame(rows).T
+
+
+def customer_bootstrap(X_base, X_new, y, seed: int = 0, n_boot: int = 1000) -> dict:
+    """Paired bootstrap OVER CUSTOMERS on one set of out-of-fold predictions.
+    The 10 fold splits reuse the same customers, so their spread only measures
+    fold-assignment noise; this measures the noise from WHICH customers we have.
+    Returns {metric: (mean, low, high)} for new minus base (MAE as a gain)."""
+    ya = y.to_numpy()
+    pb = oof_with_seed(make_ratio_tweedie, X_base, y, seed)
+    pn = oof_with_seed(make_ratio_tweedie, X_new, y, seed)
+    rng = np.random.default_rng(seed)
+    out = {"R2": [], "MAE gain (GBP)": [], "Capture@20%": []}
+    for _ in range(n_boot):
+        i = rng.integers(0, len(ya), len(ya))
+        out["R2"].append(r2(ya[i], pn[i]) - r2(ya[i], pb[i]))
+        out["MAE gain (GBP)"].append(np.abs(ya[i] - pb[i]).mean() - np.abs(ya[i] - pn[i]).mean())
+        out["Capture@20%"].append(revenue_capture(ya[i], pn[i]) - revenue_capture(ya[i], pb[i]))
+    return {k: (float(np.mean(v)), float(np.percentile(v, 2.5)), float(np.percentile(v, 97.5))) for k, v in out.items()}
+
+
+def rule_verdicts(t: pd.DataFrame, boot: dict | None = None) -> dict:
+    """What each candidate keep rule says about one feature (True = keep).
+    A, B, C use only the 10 fold splits. D, E also need the customer bootstrap."""
+    s = summarize(t)
+    r2_n, r2_mean, r2_t = s.loc["R2", "improved"], s.loc["R2", "mean"], s.loc["R2", "t"]
+    mae_t = s.loc["MAE gain (GBP)", "t"]
+    v = {"A: R2 better in >= 9/10 splits": bool(r2_n >= 9),
+         "B: R2 better in >= 8/10 splits": bool(r2_n >= 8),
+         "C: R2 mean > 0, t >= 2, MAE not clearly worse": bool(r2_mean > 0 and r2_t >= 2 and mae_t > -2)}
+    if boot is not None:
+        sig_better = [m for m in ("R2", "MAE gain (GBP)") if boot[m][1] > 0]
+        sig_worse = [m for m in ("R2", "MAE gain (GBP)") if boot[m][2] < 0]
+        v["D: R2 or MAE significantly better over customers, none significantly worse"] = bool(sig_better and not sig_worse)
+        practical = boot["MAE gain (GBP)"][0] >= 5.0 or boot["R2"][0] >= 0.005
+        v["E: D and a practical size (MAE gain >= 5 GBP or R2 >= +0.005)"] = bool(sig_better and not sig_worse and practical)
+    return v
+
+
 def main() -> None:
     train = make_snapshot(load_ledger(), TRAIN_CUTOFF)
     y = train.target
     X_base = build_features(train)
-    X_new = build_features(train, ("AOV",))
-    print("AOV summary:", X_new["AOV"].describe().round(1).to_dict())
-    t = screen(X_base, X_new, y)
     pd.set_option("display.width", 200)
-    print(t.round(3).to_string())
-    for col in ("R2 diff", "MAE gain", "Cap diff"):
-        d = t[col]
-        print(f"{col}: mean {d.mean():+.4f}, sd {d.std():.4f}, improved in {(d > 0).sum()}/{len(d)} splits, min {d.min():+.4f}, max {d.max():+.4f}")
+    for extra in (("AOV",), ("IPI",), ("OverdueRatio",), ("IPI", "OverdueRatio")):
+        X_new = build_features(train, extra)
+        t = screen(X_base, X_new, y)
+        print(f"\n=== + {' + '.join(extra)} ===")
+        print(summarize(t).round(4).to_string())
+        print(rule_verdicts(t))
 
 
 if __name__ == "__main__":
