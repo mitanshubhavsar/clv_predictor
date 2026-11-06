@@ -26,21 +26,39 @@ The bar for step 7: beat past spend by more than the noise (about +-0.04 on capt
 
 STEP 7 decisions
 - Winner is chosen by R2 in GBP (MAE breaks ties), from 5-fold CV on the train snapshot only. Test is not touched until a winner is chosen.
-- Hyperparameters are tuned with Optuna (TPE, seed 42, same CV folds for every trial and model).
+- Hyperparameters are tuned with Optuna (TPE, seed 42, 250 trials, same CV folds for every trial and model).
 - Features: R, F, M only for now. Extra features come later, one at a time.
 - One candidate at a time: 7a Ridge on log1p, 7b XGBoost on raw GBP, 7c Tweedie, 7d Hurdle.
 
-STEP 7a: Ridge on log1p(target), train CV
+STEP 7a: Ridge on log1p(target), train CV (250 Optuna trials; tuned: alpha only)
 
 | | R2 | MAE (GBP) | Capture@20% | total predicted / total actual |
 |---|---|---|---|---|
 | mean | 0.00 | 944 | 0.17 | 1.00 |
 | past_spend | 0.75 | 523 | 0.74 | 1.00 |
-| LogRidge, plain expm1 (alpha 1,116) | 0.40 | 588 | 0.72 | 0.26 |
-| LogRidge + Duan smearing (alpha 4,283) | 0.51 | 606 | 0.72 | 1.10 |
+| LogRidge, plain expm1 (alpha 1,050) | 0.40 | 586 | 0.72 | 0.28 |
+| LogRidge + Duan smearing (alpha 4,829) | 0.55 | 575 | 0.72 | 0.99 |
 
-- Does not beat past spend on R2 (0.51 vs 0.75) or MAE. Ranking is a tie (0.72 vs 0.74, within the +-0.04 noise).
+- Does not beat past spend on R2 (0.55 vs 0.75) or MAE (575 vs 523). Ranking is a tie (0.72 vs 0.74, within the +-0.04 noise).
 - Why: trained for accuracy in log units, but R2 in GBP is decided by the biggest customers. Past spend is linear in GBP, so it gets them right almost for free.
-- Plain expm1 gives a typical value, not the average (Jensen): predicts only 26% of the real total. Smearing fixes the total (1.10) but is fragile: the factor S is about 13-17 because of huge log residuals (half the customers are zero), and at small alpha the smeared R2 is hugely negative.
-- First run used alpha range up to 1,000 and the best alpha sat on the edge; widened to 1e6.
-- CV result is stable over 10 fold seeds (R2 sd <= 0.02).
+- Plain expm1 gives a typical value, not the average (Jensen): predicts only 28% of the real total. Smearing fixes the total (0.99) but is fragile: the factor S is about 13-17 because of huge log residuals (half the customers are zero), and at small alpha the smeared R2 is hugely negative.
+- First run used alpha range up to 1,000 and the best alpha sat on the edge; widened to 1e6. Going from 30 to 250 trials barely moved the alphas; smearing R2 rose 0.51 -> 0.55.
+- CV result is stable over 10 fold seeds (smearing R2 0.558 +- 0.011).
+
+STEP 7b: XGBoost on raw GBP, train CV (250 Optuna trials; tuned: n_estimators, max_depth, learning_rate, subsample, colsample_bytree)
+
+| | R2 | MAE (GBP) | Capture@20% | total predicted / total actual |
+|---|---|---|---|---|
+| past_spend | 0.75 | 523 | 0.74 | 1.00 |
+| Ridge on log1p + smearing (7a) | 0.55 | 575 | 0.72 | 0.99 |
+| XGBoost raw GBP, tuning score | 0.50 | 600 | 0.71 | 1.00 |
+| XGBoost raw GBP, honest estimate (10 other fold splits) | 0.48 +- 0.02 | | | |
+
+- Best settings: 480 trees, depth 5, learning rate 0.011, subsample 0.30, colsample 0.57. Three settings ended at the edge of their ranges (flat plateau; widening further is unlikely to change the story). subsample range was widened from 0.5-1.0 to 0.3-1.0 after it hit the edge.
+- More tuning did not help for real: 30 -> 250 trials raised the tuning score 0.45 -> 0.50 but the honest estimate only 0.475 -> 0.478. The extra trials mostly bought a better-looking number (the more combinations tried, the more likely one looks good on these folds by luck).
+- Does not beat past spend, and is below the 7a Ridge (0.48 vs 0.56 on the honest estimate). Totals are well calibrated (1.00). Ranking is a tie (0.71 vs 0.74).
+- Why it loses: trees cannot predict higher than the biggest values they saw. The largest XGBoost prediction is about 54,000 while real spend reaches 110,668; for the customer with 318,751 past spend (actual 92,477) it predicts 32,078 and the past-spend rule 120,142. About 66% of XGBoost's squared error comes from the 10 biggest customers (55% for past spend).
+- Feature importance: Frequency 0.54, Monetary 0.41, Recency 0.05.
+
+Standing by R2 (train CV): past_spend 0.75 > Ridge+smearing 0.55 > XGBoost 0.50 (honest 0.48) > Ridge plain 0.40 > mean 0.00.
+Next: 7c Tweedie, then 7d Hurdle. Ideas for the giants problem, to discuss later: predict the ratio target / Monetary; add features that separate big customers.

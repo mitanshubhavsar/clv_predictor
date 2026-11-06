@@ -24,7 +24,7 @@ from step4_rfm import build_rfm
 from step6_baselines import BASELINES, cv_predictions, score_table
 from tuning import tune
 
-N_TRIALS = 30
+N_TRIALS = 250
 
 
 class LogRidge:
