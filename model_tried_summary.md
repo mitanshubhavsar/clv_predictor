@@ -7,7 +7,7 @@ How every candidate is judged (step 7 decisions):
 - The test snapshot is not touched until a winner is chosen.
 - The bar to beat is the past-spend baseline: R2 0.75, MAE 523, Capture@20% 0.74 (train CV).
 
-Candidates: 7a Ridge on log1p (done), 7b XGBoost on raw GBP (done), 7c Tweedie (done), 7d Hurdle.
+Candidates: 7a Ridge on log1p, 7b XGBoost on raw GBP, 7c Tweedie, 7d Hurdle (all done; combined table at the end of section 7d).
 
 ---
 
@@ -182,6 +182,85 @@ By our rule (R2 picks the winner) past spend still leads, and among the models R
 
 Standing by R2 (train CV): past_spend 0.75 > Ridge+smearing 0.55 > Tweedie 0.51 (honest 0.49) > XGBoost 0.50 (honest 0.48) > Ridge plain 0.40 > mean 0.00.
 Next: 7d Hurdle.
+
+---
+
+## 7d. Hurdle model (two stages)
+
+Code: `src/step7d_hurdle.py`. Notebook: `notebooks/7d_hurdle.ipynb`.
+
+### The idea
+Step 5 showed that about half of the customers buy nothing in the next 6 months, and that whether they buy is very predictable from R, F, M. So instead of one model for everything, split the problem:
+
+| Stage | Question | Trained on | Output |
+|---|---|---|---|
+| 1. classifier | will they buy at all? | all customers (0/1) | P(buy) |
+| 2. regressor | how much, if they buy? | ONLY the customers who bought (2,039 of 4,242) | expected GBP |
+
+Prediction = P(buy) x expected spend if they buy.
+
+### Two variants of stage 2 (as in 7a: plain vs smearing)
+- raw GBP: XGBoost regressor on GBP directly.
+- log + smearing: XGBoost on log1p(GBP), converted back with Duan smearing. In 7a this was fragile because half the target was zero. Stage 2 only sees buyers, so there are no zeros in its target.
+
+### What was tuned: 10 hyperparameters, jointly (Optuna, 250 trials per variant)
+The usual five for each stage (n_estimators, max_depth, learning_rate, subsample, colsample_bytree), prefixed c_ (stage 1) and r_ (stage 2).
+
+| Variant | Stage 1 best | Stage 2 best |
+|---|---|---|
+| raw GBP | 419 trees, depth 2, lr 0.19, subsample 0.54, colsample 0.95 | 152 trees, depth 2, lr 0.030, subsample 0.30, colsample 0.63 |
+| log + smear | 409 trees, depth 3, lr 0.019, subsample 0.85, colsample 0.71 | 487 trees, depth 2, lr 0.028, subsample 0.44, colsample 0.74 |
+
+Again shallow trees. Edges: stage 2 max_depth 2 (the minimum), subsample 0.30 (the minimum) in the raw variant, n_estimators 487 (close to the 500 maximum) in the log variant. Best values are saved as BEST_7D_RAW and BEST_7D_LOG in the script.
+
+### Results (train, 5-fold CV)
+
+| | R2 (tuning) | R2 (honest, 10 other splits) | MAE (GBP) | Capture@20% | total predicted / total actual | R2 without top 10 |
+|---|---|---|---|---|---|---|
+| past_spend | 0.75 | 0.74 | 523 | 0.74 | 1.00 | 0.55 |
+| Ridge on log1p + smearing (7a) | 0.55 | 0.56 | 575 | 0.72 | 0.99 | 0.50 |
+| XGBoost raw GBP (7b) | 0.50 | 0.48 | 600 | 0.71 | 1.00 | 0.32 |
+| XGBoost Tweedie (7c) | 0.51 | 0.49 | 534 | 0.74 | 0.92 | 0.54 |
+| Hurdle, stage 2 raw GBP (7d) | 0.53 | 0.50 +- 0.02 | 589 | 0.73 | 1.00 | 0.41 |
+| Hurdle, stage 2 log + smear (7d) | 0.57 | 0.52 +- 0.03 | 534 | 0.75 | 0.97 | 0.49 |
+
+### Looking inside: stage 1 is not the bottleneck
+| (out-of-fold) | raw variant | log + smear variant |
+|---|---|---|
+| Stage 1 AUC (0.5 = coin flip, 1.0 = perfect) | 0.760 | 0.776 |
+| Mean P(buy) vs actual share of buyers (0.481) | 0.481 | 0.481 |
+| Stage 2 R2 among real buyers | 0.519 | 0.567 |
+| R2 if stage 1 were perfect (true 0/1 x stage 2) | 0.544 | 0.589 |
+| R2 actual | 0.529 | 0.567 |
+
+Even a perfect "who buys" model would add only about 0.02 of R2. The zeros are not what holds R2 down. The amounts among the buyers are: stage 2 explains only 52 to 57% of the variation in buyers' spend.
+
+### Smearing is stable here (it was not in 7a)
+| | smearing factor S | largest log residual |
+|---|---|---|
+| 7a Ridge on all customers | 13.4 | 7.3 |
+| 7d stage 2, buyers only | 1.32 | 2.9 |
+
+Removing the zeros from stage 2 shrinks the correction factor from 13.4 to 1.3. That is why log + smear beats raw in the Hurdle.
+
+### The giants again
+Both stages are trees, so the same limit applies: the largest prediction is about 50,000 to 54,000 while real spend reaches 110,668, and about 70% of the squared error comes from the 10 biggest customers (past spend 55%).
+
+### Optimism
+Tuning scores are optimistic: 0.529 vs 0.504 (raw) and 0.567 vs 0.522 (log + smear). With 10 settings tuned at once there is more room to get lucky on one fold split than in 7a (1 setting) or 7b (5 settings).
+
+### In plain words
+- The Hurdle with log + smearing is the best of the four candidates on tuning R2 (0.57), MAE (534, tied with Tweedie) and Capture@20% (0.75). On the honest R2, Ridge + smearing is still ahead (0.56 vs 0.52); the gap is about one standard deviation of the fold-split noise, so they are not clearly separated on R2.
+- No candidate beats past spend on R2 (0.75). The best ones tie it on ranking (Hurdle 0.746 vs 0.739, inside the +-0.04 noise).
+- Splitting the problem helped: both Hurdle variants beat their single-model counterparts on the tuning score (raw 0.53 vs 7b 0.50; log + smear 0.57 vs 7a 0.55).
+
+### Combined view of all four candidates (train CV, by honest R2)
+past_spend 0.74 > Ridge+smearing 0.56 > Hurdle log+smear 0.52 > Hurdle raw 0.50 > Tweedie 0.49 > XGBoost raw 0.48 > Ridge plain 0.43 > mean 0.00.
+By MAE: past_spend 523 < Tweedie 534 = Hurdle log+smear 534 < Ridge+smearing 575 < Hurdle raw 589 < XGBoost raw 600 < mean 944.
+By Capture@20%: Hurdle log+smear 0.746, Tweedie 0.744, past_spend 0.739, Hurdle raw 0.726, Ridge+smearing 0.722, XGBoost raw 0.711 (all within the +-0.04 noise of each other).
+
+### Verdict
+No candidate beats the past-spend rule. The Hurdle (log + smear) is the best overall compromise (best on tuning R2, MAE and ranking among models), with Ridge + smearing ahead on honest R2. The shared weakness of all tree-based candidates is the few giants.
 
 ---
 

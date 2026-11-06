@@ -94,3 +94,26 @@ Giants = the few customers with very large past spend. They decide R2 in GBP, wh
 - Measured: largest prediction XGBoost raw about 54,000, Tweedie about 39,000, vs 110,668 actual. Share of squared error from the 10 biggest customers: past spend 55%, XGBoost 66%, Ridge+smearing 72%, Tweedie 76%.
 - Wording correction: "cannot go above what it has seen" is true in the strict sense, but the practical problem is flat averages of a few mixed customers. It can be reduced, not removed.
 - Ideas to reduce it (not tried): predict the ratio target / Monetary; add features that separate the giants; linear model at the leaves or blend trees with the linear rule.
+
+STEP 7d: Hurdle model (two stages), train CV (250 Optuna trials per variant; 10 settings tuned jointly)
+
+Stage 1 classifier: will they buy at all? -> P(buy). Stage 2 regressor: how much, if they buy? (trained only on the 2,039 buyers). Prediction = P(buy) x expected spend. Two variants of stage 2: raw GBP, and log1p with Duan smearing.
+
+| | R2 (tuning) | R2 (honest) | MAE (GBP) | Capture@20% | total predicted / total actual | R2 without top 10 |
+|---|---|---|---|---|---|---|
+| past_spend | 0.75 | 0.74 | 523 | 0.74 | 1.00 | 0.55 |
+| Ridge on log1p + smearing (7a) | 0.55 | 0.56 | 575 | 0.72 | 0.99 | 0.50 |
+| XGBoost raw GBP (7b) | 0.50 | 0.48 | 600 | 0.71 | 1.00 | 0.32 |
+| XGBoost Tweedie (7c) | 0.51 | 0.49 | 534 | 0.74 | 0.92 | 0.54 |
+| Hurdle, stage 2 raw (7d) | 0.53 | 0.50 | 589 | 0.73 | 1.00 | 0.41 |
+| Hurdle, stage 2 log + smear (7d) | 0.57 | 0.52 | 534 | 0.75 | 0.97 | 0.49 |
+
+- Hurdle (log + smear) is the best candidate on tuning R2, MAE (tied with Tweedie) and Capture@20%. On the honest R2, Ridge + smearing is still ahead (0.56 vs 0.52), but the gap is about one standard deviation of the fold-split noise.
+- Stage 1 is not the bottleneck: AUC 0.76-0.78, predicted share of buyers matches the real share (0.481). A PERFECT "who buys" model would lift R2 only from 0.567 to 0.589. The weak point is the amount among the biggest buyers.
+- Smearing is stable in stage 2 (factor 1.32 vs 13.4 in 7a) because buyers have no zeros. That is why log + smear beats raw in the Hurdle.
+- Splitting the problem helped: both Hurdle variants beat their single-model counterparts on the tuning score.
+- Tuning score is optimistic (0.567 vs 0.522 honest) because 10 settings were tuned at once.
+- Same giants problem as 7b/7c: largest prediction about 50,000-54,000 vs 110,668 actual; about 70% of the error from the 10 biggest customers.
+
+STEP 7 overall: no candidate beats the past-spend rule on R2 (0.75). Standing by honest R2: past_spend 0.74 > Ridge+smearing 0.56 > Hurdle log+smear 0.52 > Hurdle raw 0.50 > Tweedie 0.49 > XGBoost 0.48 > Ridge plain 0.43 > mean 0.00. By MAE and ranking the best models (Tweedie, Hurdle) are level with past spend.
+Next (to discuss): attack the giants (predict the ratio target / Monetary; add features that separate big customers), then evaluate the chosen model on test once.
