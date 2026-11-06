@@ -81,3 +81,16 @@ Tweedie = the same boosted trees with a loss built for "many exact zeros plus a 
 
 Standing by R2 (train CV): past_spend 0.75 > Ridge+smearing 0.55 > Tweedie 0.51 (honest 0.49) > XGBoost 0.50 (honest 0.48) > Ridge plain 0.40 > mean 0.00.
 Next: 7d Hurdle. Ideas for the giants problem, to discuss later: predict the ratio target / Monetary; add features that separate big customers.
+
+WHY TREE MODELS (7b XGBoost, 7c Tweedie) STRUGGLE WITH THE "GIANTS"
+
+Giants = the few customers with very large past spend. They decide R2 in GBP, which is why the trees stay near R2 0.5 while the past-spend rule gets 0.75.
+
+- A tree answers with the average of a bucket: customers are sorted into buckets by questions (Monetary above X? Frequency above Y?) and each bucket answers with the average future spend of the training customers in it.
+- So it cannot go above what it has seen (an average cannot exceed the largest value in it, and boosting adds only small bounded corrections). A customer with 400,000 past spend gets the same answer as one with 150,000 if both fall in the top bucket.
+- And the top bucket is tiny and mixed: among the 10 biggest past spenders, actual future spend ranges from 4,005 to 110,668, so the tree answers with roughly their average, flat.
+- A linear rule (0.37 x Monetary) is a ruler: bigger input, proportionally bigger output, no cap. Customer 18102: past spend 318,751, actual 92,477, past-spend rule 120,142, XGBoost 32,065, Tweedie 31,740.
+- Made worse here by Optuna choosing very cautious trees (slow, small samples, shallow), and by having only a few dozen giants with 20% of them held out in each CV fold.
+- Measured: largest prediction XGBoost raw about 54,000, Tweedie about 39,000, vs 110,668 actual. Share of squared error from the 10 biggest customers: past spend 55%, XGBoost 66%, Ridge+smearing 72%, Tweedie 76%.
+- Wording correction: "cannot go above what it has seen" is true in the strict sense, but the practical problem is flat averages of a few mixed customers. It can be reduced, not removed.
+- Ideas to reduce it (not tried): predict the ratio target / Monetary; add features that separate the giants; linear model at the leaves or blend trees with the linear rule.

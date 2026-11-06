@@ -182,3 +182,44 @@ By our rule (R2 picks the winner) past spend still leads, and among the models R
 
 Standing by R2 (train CV): past_spend 0.75 > Ridge+smearing 0.55 > Tweedie 0.51 (honest 0.49) > XGBoost 0.50 (honest 0.48) > Ridge plain 0.40 > mean 0.00.
 Next: 7d Hurdle.
+
+---
+
+## Why tree models (7b XGBoost, 7c Tweedie) struggle with the "giants"
+
+The giants = the few customers with very large past spend (for example Monetary 318,751, 245,028, 185,106). They decide R2 in GBP, so this explains why the trees stay near R2 0.5 while the past-spend rule gets 0.75.
+
+### A tree answers with the average of a bucket
+A decision tree is a flowchart. Each customer is sorted into a bucket by questions like "Monetary above 5,000? Frequency above 6?". Each bucket answers with ONE number: the average future spend of the training customers who landed in it. Two consequences:
+
+1. It cannot go above what it has seen. A bucket's answer is an average of real training values, so it cannot exceed the largest of them. A boosted model adds many trees, but each tree adds a bounded correction (small, with a small learning rate), so the sum stays in a limited range. A customer with 400,000 past spend gets the same answer as one with 150,000 if both fall into the same top bucket.
+2. The top bucket is tiny and mixed, so its average is a compromise. Only a handful of customers have past spend above 100,000 and they do not behave alike. Among the 10 biggest past spenders, one went on to spend 110,668, another 92,477, and others only 4,005 to 41,989. The tree answers with roughly their average, flat.
+
+### Why a linear rule behaves differently
+Past spend = 0.37 x Monetary is a ruler: twice the input gives twice the output, no buckets, no cap.
+
+| Customer 18102 | GBP |
+|---|---|
+| Past spend (Monetary) | 318,751 |
+| Actual future spend | 92,477 |
+| Past-spend rule predicts | 120,142 |
+| XGBoost raw predicts | 32,065 |
+| Tweedie predicts | 31,740 |
+
+The rule is not "right" for every giant (it overshoots some), but being proportionally large for the biggest ones pays off in R2.
+
+### Two things made it worse here
+- Optuna chose very cautious trees (slow learning, small row samples, shallow depth). Good in general, but it smooths the giants down even more.
+- Few examples: only a few dozen giants, and 20% of them are held out in each CV fold, so the model may never have seen anything that large in training.
+
+### Measured effect (train CV)
+- Largest prediction vs largest actual (110,668): XGBoost raw about 54,000, Tweedie about 39,000.
+- Share of total squared error from the 10 biggest customers: past spend 55%, XGBoost raw 66%, Ridge+smearing 72%, Tweedie 76%.
+
+### Wording correction
+"Trees cannot predict higher than the biggest values they have seen" is true in the strict sense, but the practical problem is more specific: they predict flat averages of a few mixed customers. It is not an absolute law and can be reduced.
+
+### Ideas to reduce it (not tried yet)
+- Predict the ratio target / Monetary, so the linear rule supplies the scale and the trees only learn the correction.
+- Add features that separate the giants (order sizes, how often they buy).
+- Use a linear model at the leaves, or blend trees with the linear rule.
