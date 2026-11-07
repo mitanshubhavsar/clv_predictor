@@ -83,3 +83,10 @@ Like the old export script, it writes everything the dashboard and the site read
 Checks built into the script: the curve at 20% must match metrics.json. Values reproduce step 9: model C minus past spend is R2 +0.010 [+0.001, +0.025], MAE gain +18.9 GBP [+10.0, +29.1], Capture -0.000 [-0.009, +0.007].
 
 Next: (2) figures with matplotlib, (3) Streamlit dashboard, (4) React site and live scorer, (5) Docker, requirements-api.txt, CI and Pages workflow.
+
+---
+
+## STEP 17b done: figures   [scripts/make_site_images.py]
+Six matplotlib figures written to site/public/img/, drawn only from saved files (capture_curve.json, model_comparison.csv, shap_importance.csv): capture_curves.png, model_comparison.png (MAE bars; past spend orange, model C blue, others grey), shap_importance.png, pipeline.png, snapshot_timeline.png, serving.png. Looked at each one; fixed two layout problems (diagram boxes cut off at the right edge, timeline labels cut off inside short bars).
+
+Next: (3) Streamlit dashboard, (4) React site and live scorer, (5) Docker, requirements-api.txt, CI and Pages workflow.
