@@ -1,2 +1,24 @@
 /src/__pycache__/
 serving/__pycache__/
+
+# Python caches (any folder)
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Node / React site (rebuilt with npm ci and npm run build)
+node_modules/
+site/dist/
+
+# Local environments and secrets
+.venv/
+venv/
+.env
+.env.*
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store

@@ -99,3 +99,15 @@ Check: ran headless with streamlit's AppTest: no exceptions, metrics shown 0.716
 Run:  streamlit run dashboard/app.py
 
 Next: (4) React site and live scorer, (5) Docker, requirements-api.txt, CI and Pages workflow.
+
+---
+
+## STEP 17d done: React + Vite + TypeScript site   [site/]
+Same shape as the old project: one page with About, Dataset, Architecture, Results, Try it; skip link, active-section nav, tables in scrollable wrappers, light/dark theme from the OS. Files: site/src/App.tsx (sections), Scorer.tsx (live scorer), lib.ts, types.ts, styles.css. Reads site/public/data/{summary,dataset,scorer}.json and site/public/img/*.png, so every number comes from the export script.
+Live scorer: example customers from each segment, four inputs, checks API_URL/health (shows a "waking" message because free hosting sleeps), POSTs to /score, and falls back to the saved backtest score when the API is unset or offline (only for unedited examples; edited inputs need the API and the page says so). API address from VITE_API_URL.
+Honesty built into the About section: states that sorting by past spend is almost as good and the model is about 3% better in MAE.
+Checks: npm install, npm run build (tsc type-check + vite build) pass; vite preview serves the page, data and images (HTTP 200). Needed @types/node for vite.config.ts. Not yet looked at in a browser, and the live scorer has not been tested against the running API (API CORS currently allows localhost:5173, 8501 only; add the Pages address when deploying).
+Build base path: VITE_BASE (default /clv-stepwise/), set to the repository name when publishing.
+Run:  cd site; PATH=/data/home/mitanshub/miniconda3/envs/ml_clv/bin:$PATH npm run dev
+
+Next: (5) Docker, requirements-api.txt, CI and Pages workflow.
