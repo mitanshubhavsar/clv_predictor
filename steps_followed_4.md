@@ -23,3 +23,24 @@ Target: 1 if floored 6-month spend > 0 (train: 48.1% yes; test 57%). Scored by A
 - Proposed classifier: logistic regression on R,F,M (simplest, best, calibrated). To confirm with the user.
 
 Calibration (plain words): when the model says "70%", about 70 of 100 such customers should really come back. Our top bin: predicted 91.5%, actual 93.4%; lowest bin: predicted 16%, actual 16%. It matters because the Protect/Grow cut-off is "probability above 50%", which only means "more likely than not" if the numbers are honest. AUC = ranking, calibration = the numbers themselves. Example in model_interpretation.md.
+
+## STEP 10b: the 2x2 segments (train, out-of-fold)   [src/step10_segments.py, notebooks/10b_segments.ipynb]
+High value = top 20% of model C's predicted spend; likely to return = logistic probability > 0.5 (classifier from 10a). Note: files from 10a were renamed to step10_repurchase_segmentation.py and 10a_repurchase_segmentation.ipynb; imports updated.
+
+| Segment | Customers | Share of customers | Mean actual future spend (GBP) | Bought again | Share of future money |
+|---|---|---|---|---|---|
+| Protect | 818 | 19.3% | 2,738 | 85.7% | 73.9% |
+| Win back | 31 | 0.7% | 448 | 25.8% | 0.5% |
+| Grow | 1,038 | 24.5% | 407 | 61.3% | 14.0% |
+| Low priority | 2,355 | 55.5% | 150 | 29.5% | 11.6% |
+
+- The segments are real: spend and return rate differ a lot between them, in the order we would expect.
+- Win back is nearly empty (31 customers). Value and probability move together (correlation 0.29): only 3.7% of high-value customers are unlikely to return. The box for "valuable but drifting away" hardly exists at these cut-offs.
+- Against a hand-written rule (top 20% past spend x bought in last 90 days): the top box is almost the same (815 of 849 customers overlap; its Protect holds 72.5% of the money vs 73.9%). The model's gain is in the lower boxes: Grow vs Low priority separate 61% vs 30% buying again, the rule's 48% vs 26%.
+- Honest reading: the model's top box adds little over a rule a marketer could write; the probability axis is what sharpens the rest.
+
+Summary of how the segments were made and decided (details in model_interpretation.md):
+- Honest (out-of-fold) predictions per train customer: value from model C, probability of buying again from the logistic regression.
+- Two yes/no answers per customer: High value? = predicted value in the top 20%; Likely to return? = probability > 50% (both cut-offs chosen by the user, not tuned).
+- The pair picks the block: yes/yes Protect, yes/no Win back, no/yes Grow, no/no Low priority.
+- Blocks are then checked against what really happened (actual spend, share who bought again, share of money). Classifier choice and the 90-day hand rule were my choices; results were looked at once, train only.

@@ -42,3 +42,48 @@ Our customers. Take the 425 customers the model scored in the top bin (average p
 Why it matters here: our "likely to return" cut-off is "probability above 50%". If the model were overconfident (saying 55% when the truth is 30%), the Protect and Grow boxes would be full of customers who mostly do not come back.
 
 AUC = does the model order customers correctly (ranking). Calibration = is the percentage itself true (the numbers). The 2x2 needs both.
+
+### What the segments showed (train, out-of-fold)
+- Protect: 19% of customers, 74% of the future money, 86% buy again. Win back: only 31 customers (0.7%). Grow: 25%, 61% buy again. Low priority: 56%, 30% buy again, 12% of the money.
+- Why Win back is almost empty: customers who spent a lot recently are almost always the ones likely to come back (value and probability are correlated). Very few are "valuable but drifting". A real win-back list would need a looser rule, e.g. high past spend and a long gap since the last purchase.
+- A simple hand rule (top 20% past spend and bought in the last 90 days) finds almost the same Protect group (815 of 849 customers the same). The model adds sharper separation among everyone else.
+
+### How the segmentation was built and decided (step 10b)
+
+How it was built:
+1. Honest predictions for every train customer: each prediction comes from a model that never saw that customer (5-fold out-of-fold, fold seed 0). Two predictions per customer: value = model C's predicted GBP spend for the next 6 months; probability = the logistic regression's chance of buying again.
+2. Two lines (the user's option 2): high value = predicted value in the top 20% (value >= its 80th percentile); likely to return = probability > 0.5.
+3. Each customer's two answers pick one of four blocks.
+4. Check against what really happened: per block, actual future spend, share who bought again, share of total future money. This is the only test of whether the blocks mean anything.
+
+How it was decided:
+- Cut-offs (top 20%, 50%): chosen by the user; not tuned, no other values tried.
+- Classifier: proposed by me (logistic regression: simplest, best AUC 0.778 vs 0.775, well calibrated); accepted by the user moving on.
+- Value: model C (the user's headline model).
+- Hand-written comparison rule (top 20% past spend and bought in the last 90 days): invented by me as a yardstick; the 90 days is arbitrary.
+- Results were looked at once and reported as they came out (the nearly empty Win back box is a finding, not something fixed by moving a cut-off). Train only; test not used yet.
+
+### Which customer goes in which block
+
+Each customer gets two yes/no answers: High value? (predicted spend in the top 20%) and Likely to return? (probability > 50%).
+
+| High value? | Likely to return? | Block |
+|---|---|---|
+| Yes | Yes | Protect |
+| Yes | No | Win back |
+| No | Yes | Grow |
+| No | No | Low priority |
+
+In the code this is the NAMES dictionary in src/step10_segments.py, mapping (high, likely) to the block name.
+
+Made-up examples, to show the logic only:
+
+| Customer | Predicted spend | Rank | Probability | High value? | Likely? | Block |
+|---|---|---|---|---|---|---|
+| A | high | top 5% | 0.92 | Yes | Yes | Protect |
+| B | high | top 15% | 0.30 | Yes | No | Win back |
+| C | low | middle | 0.70 | No | Yes | Grow |
+| D | very low | bottom | 0.15 | No | No | Low priority |
+
+Meaning in practice: Protect = keep happy, no discounts needed. Win back = valuable but unlikely to return, run a win-back campaign. Grow = modest spend but loyal, upsell / cross-sell. Low priority = do not spend effort.
+The two questions are independent: value comes from model C, return probability from the classifier; neither model knows about the blocks.

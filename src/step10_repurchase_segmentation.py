@@ -9,7 +9,7 @@ Models, all scored by AUC (5-fold CV on train, repeated over fold seeds 0..9):
 Also: calibration (does 70% mean ~70%?) with Brier score and a 10-bin table.
 Test set is NOT touched.
 
-Run:  python src/step10_repurchase.py
+Run:  python src/step10_repurchase_segmentation.py
 """
 import numpy as np
 import pandas as pd
