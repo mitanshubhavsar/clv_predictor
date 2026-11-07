@@ -90,3 +90,12 @@ Next: (2) figures with matplotlib, (3) Streamlit dashboard, (4) React site and l
 Six matplotlib figures written to site/public/img/, drawn only from saved files (capture_curve.json, model_comparison.csv, shap_importance.csv): capture_curves.png, model_comparison.png (MAE bars; past spend orange, model C blue, others grey), shap_importance.png, pipeline.png, snapshot_timeline.png, serving.png. Looked at each one; fixed two layout problems (diagram boxes cut off at the right edge, timeline labels cut off inside short bars).
 
 Next: (3) Streamlit dashboard, (4) React site and live scorer, (5) Docker, requirements-api.txt, CI and Pages workflow.
+
+---
+
+## STEP 17c done: Streamlit dashboard   [dashboard/app.py]
+Backtest inspector in the old project's style: reads only saved files (outputs/metrics.json, test_predictions.csv, model_comparison.csv, shap_importance.csv, site/public/data/summary.json and capture_curve.json), never refits anything. Sidebar lists which artifacts exist; if any is missing it stops with the commands to rebuild them. Tabs: Overview (model C R2, MAE, Capture with intervals, difference vs past spend, targeting, capture curves), Model comparison (table, SHAP), Segments, Customers (filter by segment, top 20%, CSV download), Explain (one customer: multiplier x scale), Limits.
+Check: ran headless with streamlit's AppTest: no exceptions, metrics shown 0.716 / £594 / 0.740 (match step 9). Not opened in a browser.
+Run:  streamlit run dashboard/app.py
+
+Next: (4) React site and live scorer, (5) Docker, requirements-api.txt, CI and Pages workflow.
