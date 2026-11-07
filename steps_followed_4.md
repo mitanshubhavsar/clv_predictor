@@ -61,3 +61,20 @@ Fixed on train: model C and logistic fitted on all train; high value = predicted
 - Probabilities are too pessimistic on test: test customers buy again more (57% vs 48%), so Grow bought again 76% (train 61%) and Low priority 41% (train 30%). Ranking works, levels shifted (base-rate shift).
 - Win back is tiny (25) and not a drifting group: they spent 1,637 on average and 64% bought again, more than Grow. The classifier called them unlikely and was wrong for them. The hand rule's win-back (156 customers; high past spend, no purchase in 90 days) behaves alike (1,619; 69%).
 - Sensitivity (high value = top 20% of test predictions): essentially the same. Top box vs hand rule: 769 of 804 customers the same.
+
+## STEP 11: SHAP, what drives model C?   [src/step11_shap.py, notebooks/11_shap.ipynb]
+Model C = multiplier x scale (scale = max(past spend, 50)). The trees learn only the multiplier (Tweedie, log link), so SHAP explains log(multiplier): +0.1 = multiplier about 10% higher than the average customer. Fitted and explained on train; SHAP values add up to the model output (checked in the code).
+
+| Feature | Mean abs SHAP | Share | Direction |
+|---|---|---|---|
+| IPI (purchase interval) | 0.046 | 33% | shorter interval, higher multiplier |
+| Recency | 0.043 | 31% | more recent, higher multiplier |
+| OverdueRatio | 0.030 | 22% | more overdue, lower multiplier |
+| Monetary | 0.011 | 8% | weak |
+| Frequency | 0.010 | 7% | weak |
+
+- Past spend does almost all the work: prediction ranks customers like Monetary (rank correlation 0.993). The trees nudge the multiplier only within 0.31 to 0.40 (average 0.355, about +/-12%).
+- IPI, Recency and OverdueRatio = 86% of the SHAP total.
+- Old goal "top 5 features cover >= 70%" is meaningless with exactly 5 features (100% by construction); top 3 cover 86%.
+- Three customers (waterfalls in the notebook): biggest spender: past spend 245,028, multiplier 0.390, prediction 95,456, actual 110,668. Typical: past spend 629, multiplier 0.370, prediction 233, actual 0. Lapsed (longest recency): past spend 130, multiplier 0.349, prediction 45, actual 969.
+- Caution: SHAP shows what the model uses, not what helps. IPI is the biggest nudge, yet step 8 and the fresh-seed check could not prove it improves accuracy.

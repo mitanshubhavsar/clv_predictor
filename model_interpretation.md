@@ -94,3 +94,19 @@ Exact cut-off (train, out-of-fold, model C): "high value" means a predicted 6-mo
 - The four blocks keep their shape on new data: Protect is 18% of customers and holds 71.5% of the money (train 74%); the order Protect > Grow > Low priority holds for spend and for return rate.
 - Probabilities ran too low on test: 57% of test customers bought again versus 48% in train, so "50%" is a stricter line than intended; Grow actually bought again 76% (train 61%), Low priority 41% (train 30%). The model ranks customers correctly, but the percentages are not exact when buying habits shift over time.
 - Win back (25 customers) is not really "drifting": they spent 1,637 GBP on average and 64% bought again, more than Grow. High past spend with no purchase in the last 90 days (the hand rule, 156 customers) gives a similar group.
+
+## Step 11: SHAP in plain words
+
+What SHAP is: for one customer's prediction, it splits "why this number and not the average" into one contribution per feature. The contributions add up exactly to the prediction. Averaging the size of the contributions over all customers gives each feature's global importance.
+
+How to read ours: model C predicts past spend x multiplier. The trees only choose the multiplier, so SHAP explains the multiplier. A SHAP value of +0.1 means "this feature makes the multiplier about 10% bigger than for the average customer".
+
+What it showed:
+- The multiplier is almost constant (0.31 to 0.40, average 0.355). Past spend (the scale) decides the prediction: rank correlation with Monetary 0.993. This is the same finding as before: the model is "about 0.37 x past spend" with small adjustments.
+- The adjustments come from the purchase interval (33% of SHAP), Recency (31%) and OverdueRatio (22%). Frequency and Monetary add little inside the trees (Monetary already acts as the scale).
+- Direction is sensible: bought recently or buys often in short intervals gives a slightly higher multiplier; very overdue gives a lower one.
+- Examples: the biggest spender (past spend 245,028) gets a multiplier of 0.390, prediction 95,456, actual 110,668. A lapsed customer (past spend 130, long gap) gets 0.349, prediction 45, actual 969: the model has no way to see a small past spender who suddenly buys a lot.
+
+Two cautions:
+- Importance is not usefulness: SHAP says which columns the model leans on, not whether they improve accuracy. IPI leads the ranking but its accuracy gain was not provable (step 8).
+- With 5 features the old "top 5 cover 70%" goal is automatically met, so it says nothing.
