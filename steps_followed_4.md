@@ -46,3 +46,18 @@ Summary of how the segments were made and decided (details in model_interpretati
 - Blocks are then checked against what really happened (actual spend, share who bought again, share of money). Classifier choice and the 90-day hand rule were my choices; results were looked at once, train only.
 
 Exact value cut-off (train): high value = predicted 6-month spend >= about 721 GBP (80th percentile of model C's out-of-fold predictions; median 233, 95th percentile 2,106).
+
+## STEP 10c: single test-set check of the segments   [src/step10_segments_test.py, notebooks/10c_segments_test.ipynb]
+Fixed on train: model C and logistic fitted on all train; high value = predicted spend >= 721 GBP; likely = probability > 0.5. Applied once to test (4,326 customers, 56.9% bought again).
+
+| Segment | Customers | Share | Mean future spend (GBP) | Bought again | Share of future money |
+|---|---|---|---|---|---|
+| Protect | 779 | 18.0% | 3,802 | 92.7% | 71.5% |
+| Win back | 25 | 0.6% | 1,637 | 64.0% | 1.0% |
+| Grow | 835 | 19.3% | 594 | 75.7% | 12.0% |
+| Low priority | 2,687 | 62.1% | 240 | 40.6% | 15.6% |
+
+- The structure holds: Protect keeps ~72% of the money (train 74%); order Protect > Grow > Low priority is preserved on spend and return rate.
+- Probabilities are too pessimistic on test: test customers buy again more (57% vs 48%), so Grow bought again 76% (train 61%) and Low priority 41% (train 30%). Ranking works, levels shifted (base-rate shift).
+- Win back is tiny (25) and not a drifting group: they spent 1,637 on average and 64% bought again, more than Grow. The classifier called them unlikely and was wrong for them. The hand rule's win-back (156 customers; high past spend, no purchase in 90 days) behaves alike (1,619; 69%).
+- Sensitivity (high value = top 20% of test predictions): essentially the same. Top box vs hand rule: 769 of 804 customers the same.

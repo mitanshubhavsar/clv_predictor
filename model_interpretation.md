@@ -89,3 +89,8 @@ Meaning in practice: Protect = keep happy, no discounts needed. Win back = valua
 The two questions are independent: value comes from model C, return probability from the classifier; neither model knows about the blocks.
 
 Exact cut-off (train, out-of-fold, model C): "high value" means a predicted 6-month spend of about 721 GBP or more (the 80th percentile). For scale: the median prediction is 233 GBP, the 95th percentile 2,106 GBP; the 80th percentile of past spend (Monetary) is 2,029 GBP, which is why the model's predictions (about 0.37 x past spend, adjusted) cut in at a much smaller number.
+
+### Segments on the test set (step 10c)
+- The four blocks keep their shape on new data: Protect is 18% of customers and holds 71.5% of the money (train 74%); the order Protect > Grow > Low priority holds for spend and for return rate.
+- Probabilities ran too low on test: 57% of test customers bought again versus 48% in train, so "50%" is a stricter line than intended; Grow actually bought again 76% (train 61%), Low priority 41% (train 30%). The model ranks customers correctly, but the percentages are not exact when buying habits shift over time.
+- Win back (25 customers) is not really "drifting": they spent 1,637 GBP on average and 64% bought again, more than Grow. High past spend with no purchase in the last 90 days (the hand rule, 156 customers) gives a similar group.
