@@ -1,0 +1,9 @@
+,R2,MAE,Capture@20%
+Mean baseline,-0.0002,944.1293,0.17
+Past spend (0.37 x Monetary),0.7458,523.1532,0.7391
+Log-Ridge + smearing (7a),0.5488,575.1607,0.7222
+XGBoost on raw GBP (7b),0.5028,600.5423,0.711
+XGBoost Tweedie (7c),0.5075,534.5955,0.7425
+"Hurdle, log + smearing (7d)",0.561,535.7917,0.7462
+"Ratio Tweedie, R,F,M (7e)",0.7592,507.4736,0.7408
+Model C: ratio Tweedie + interval/overdue,0.7598,502.6343,0.7461

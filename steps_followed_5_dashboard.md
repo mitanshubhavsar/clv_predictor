@@ -56,3 +56,30 @@ Note found while writing the test: the full raw file is far over the 5 MB / 50,0
 Run it:  uvicorn serving.app:app --port 8000   then open http://localhost:8000/docs
 
 Fix after first run: opening http://127.0.0.1:8000 showed {"detail":"Not Found"} because only the API endpoints existed and there was no page at "/". Added a home page at "/" (what the model is, links to /docs, /model-info and /health, and a small form that calls /score and shows spend, probability, segment and reasons). Test added (test_home_page); 7 tests pass. Restart uvicorn to see it (or use --reload).
+
+---
+
+## Old project, checked in detail: the level we have to match (then improve)
+
+1. Streamlit "backtest inspector" (dashboard/app.py, about 150 lines): sidebar shows which saved files exist; tabs Overview (best model, snapshot sizes, R2 with and without the top customer, top-20% capture vs past-spend sort with intervals), Model comparison (table + SHAP images), Segments (summary table + filterable customer table). Reads saved files only.
+2. Public site (site/, React 18 + TypeScript + Vite, about 1,170 lines): one page with sections About, Dataset, Architecture, Results, Try it; skip link, active-section nav, accessible tables and figures; loads 4 JSON files (summary, dataset, scorer, capture_curve); every number comes from the saved metrics, none typed by hand; footer credits the data licence.
+3. Live scorer (Scorer.tsx): preset customers from each segment, inputs, calls the API /score, shows spend, repurchase probability and top reasons; checks /health first and shows a "waking" status because Render sleeps; falls back to saved scores when the API is offline or VITE_API_URL is unset.
+4. Generated figures (scripts/make_site_images.py, matplotlib, one consistent style): revenue-capture curves, model error comparison, SHAP importance, pipeline flow diagram, snapshot timeline, serving diagram.
+5. Data export (scripts/export_site_data.py): writes the JSON from metrics.json, saved predictions and the raw data, so nothing on the site is hand-typed.
+6. Packaging: serving/Dockerfile, .dockerignore, requirements-api.txt; CI (ruff, pytest, import check with only API requirements, docker build, container smoke test); Pages workflow (npm ci, type-check, build, deploy to GitHub Pages, VITE_API_URL repository variable); API on Render.
+
+Decision (user): build the public site as React + Vite like the old one. Node and npm were not installed, so Node 22.22.0 was installed into the ml_clv conda env (conda install -c conda-forge nodejs=22; it also updated ca-certificates and openssl in that env). Use it with PATH=/data/home/mitanshub/miniconda3/envs/ml_clv/bin:$PATH.
+
+Build order: (1) data export + saved scores file, (2) figures, (3) Streamlit dashboard, (4) React site and live scorer, (5) Docker, requirements-api.txt, CI and Pages workflow. Nothing is pushed or deployed to GitHub or Render without asking first.
+
+---
+
+## STEP 17a done: data export for the dashboard and the site   [scripts/export_site_data.py]
+Like the old export script, it writes everything the dashboard and the site read, from the saved model and the data, so nothing is typed by hand:
+- outputs/test_predictions.csv: 4,326 test customers with features, predicted spend, multiplier, probability of buying again, segment and actual spend.
+- outputs/model_comparison.csv: 5-fold CV on train for every model tried (mean, past spend, log-Ridge, XGBoost, Tweedie, Hurdle, ratio Tweedie, model C). Model C: R2 0.760, MAE 503, Capture 0.746; past spend 0.746 / 523 / 0.739.
+- outputs/shap_importance.csv: interval 33%, recency 31%, overdue ratio 22%, monetary 8%, frequency 7%.
+- site/public/data/summary.json, capture_curve.json, dataset.json, scorer.json (headline metrics with intervals, model C minus past spend with bootstrap intervals, segment table, targeting lift, a customer followed from raw rows to features to prediction, four preset customers for the live scorer, slider ranges).
+Checks built into the script: the curve at 20% must match metrics.json. Values reproduce step 9: model C minus past spend is R2 +0.010 [+0.001, +0.025], MAE gain +18.9 GBP [+10.0, +29.1], Capture -0.000 [-0.009, +0.007].
+
+Next: (2) figures with matplotlib, (3) Streamlit dashboard, (4) React site and live scorer, (5) Docker, requirements-api.txt, CI and Pages workflow.

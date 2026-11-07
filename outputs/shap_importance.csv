@@ -1,0 +1,6 @@
+feature,mean_abs_shap,share
+IPI,0.0464,0.3338
+Recency,0.0426,0.3062
+OverdueRatio,0.03,0.2154
+Monetary,0.0105,0.0755
+Frequency,0.0096,0.0691
