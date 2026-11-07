@@ -78,3 +78,20 @@ Model C = multiplier x scale (scale = max(past spend, 50)). The trees learn only
 - Old goal "top 5 features cover >= 70%" is meaningless with exactly 5 features (100% by construction); top 3 cover 86%.
 - Three customers (waterfalls in the notebook): biggest spender: past spend 245,028, multiplier 0.390, prediction 95,456, actual 110,668. Typical: past spend 629, multiplier 0.370, prediction 233, actual 0. Lapsed (longest recency): past spend 130, multiplier 0.349, prediction 45, actual 969.
 - Caution: SHAP shows what the model uses, not what helps. IPI is the biggest nudge, yet step 8 and the fresh-seed check could not prove it improves accuracy.
+
+## STEP 12: targeting simulation   [src/step12_targeting.py, notebooks/12_targeting.ipynb; summary also in business_decisions.md]
+The old "A/B simulation" had no treatment group, no cost and no causal effect (the old project's own decisions.md says so). Here it is stated as what it is: pick 20% of customers by a rule and look at the REAL money they spend in the next 6 months, versus a random 20%. Test snapshot, models fitted on train.
+
+| Rule for choosing the 20% | Mean future spend of those customers | Lift vs random (95%) | Share of all money reached |
+|---|---|---|---|
+| model C | 3,543 GBP | +270% (+248% to +290%) | 74.0% |
+| past spend (Monetary) | 3,539 | +269% | 73.9% |
+| model C x P(return) | 3,501 | +265% | 73.1% |
+| recency only | 2,858 | +198% | 59.6% |
+| perfect ranking (ceiling) | 3,988 | +316% | 83.2% |
+Random 20% = 958 GBP (the average).
+
+- Old goal (lift >= +100%) met easily, but past spend does exactly as well: the model does not beat a spreadsheet sort at this task (same as steps 9 and 11).
+- Decile table (model C): top 10% of customers hold 61% of the future money; the bottom 50% hold about 10%.
+- Train out-of-fold: same picture (+272% vs +269% for past spend).
+- Break-even (arithmetic, not a result): for the targeted group a 20 GBP contact pays for itself if it lifts that customer's spend by 0.6%; for a random group, 2.1%. We measured who spends, not who responds.
