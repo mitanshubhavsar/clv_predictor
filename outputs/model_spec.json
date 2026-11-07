@@ -1,0 +1,34 @@
+{
+  "model": "RatioXGB (reg:tweedie on future/scale), prediction = multiplier x max(Monetary, 50), clipped at 0",
+  "params": {
+    "n_estimators": 50,
+    "max_depth": 2,
+    "learning_rate": 0.0177,
+    "subsample": 0.5816,
+    "colsample_bytree": 0.7133,
+    "weight_power": 0.8459,
+    "tweedie_variance_power": 1.8777
+  },
+  "columns": [
+    "Recency",
+    "Frequency",
+    "Monetary",
+    "IPI",
+    "OverdueRatio"
+  ],
+  "train_cutoff": "2010-12-01",
+  "test_cutoff": "2011-06-01",
+  "window": "12 months of features before the cutoff, 6 months of target after it",
+  "target": "net money kept in the 6 months after the cutoff, floored at 0 (returns netted off, dated at cancellation)",
+  "feature_definitions": {
+    "Recency": "days from last purchase to cutoff",
+    "Frequency": "distinct purchase invoices",
+    "Monetary": "net spend (purchases minus returns) in the feature window",
+    "IPI": "mean days between purchase days; blank (NaN) if one purchase day",
+    "OverdueRatio": "Recency / max(IPI, 1); blank if IPI blank"
+  },
+  "segments": {
+    "high_value": "predicted spend >= 721 GBP (80th pct of train out-of-fold predictions)",
+    "likely_to_return": "logistic P(spend > 0) > 0.5"
+  }
+}

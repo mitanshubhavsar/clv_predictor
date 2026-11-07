@@ -1,0 +1,185 @@
+{
+  "data": {
+    "train_customers": 4242,
+    "test_customers": 4326,
+    "train_share_zero_target": 0.519,
+    "test_share_zero_target": 0.431
+  },
+  "train_cv_fresh_seeds_20_29": {
+    "R2": {
+      "mean": 0.752,
+      "sd": 0.008
+    },
+    "MAE": {
+      "mean": 504.066,
+      "sd": 2.218
+    },
+    "Capture@20%": {
+      "mean": 0.745,
+      "sd": 0.001
+    }
+  },
+  "test": {
+    "mean": {
+      "R2": {
+        "value": -0.002,
+        "ci95": [
+          -0.004,
+          -0.001
+        ]
+      },
+      "MAE": {
+        "value": 1085.782,
+        "ci95": [
+          949.107,
+          1246.753
+        ]
+      },
+      "Capture@20%": {
+        "value": 0.163,
+        "ci95": [
+          0.148,
+          0.266
+        ]
+      },
+      "without_top10": {
+        "R2": -0.0,
+        "MAE": 886.964,
+        "Capture@20%": 0.193
+      },
+      "predicted_total_over_actual": 0.745
+    },
+    "past_spend": {
+      "R2": {
+        "value": 0.707,
+        "ci95": [
+          0.575,
+          0.776
+        ]
+      },
+      "MAE": {
+        "value": 613.477,
+        "ci95": [
+          535.22,
+          702.645
+        ]
+      },
+      "Capture@20%": {
+        "value": 0.739,
+        "ci95": [
+          0.695,
+          0.782
+        ]
+      },
+      "without_top10": {
+        "R2": 0.631,
+        "MAE": 510.457,
+        "Capture@20%": 0.671
+      },
+      "predicted_total_over_actual": 0.726
+    },
+    "model_A_RFM": {
+      "R2": {
+        "value": 0.707,
+        "ci95": [
+          0.6,
+          0.767
+        ]
+      },
+      "MAE": {
+        "value": 596.194,
+        "ci95": [
+          521.468,
+          684.695
+        ]
+      },
+      "Capture@20%": {
+        "value": 0.739,
+        "ci95": [
+          0.697,
+          0.782
+        ]
+      },
+      "without_top10": {
+        "R2": 0.671,
+        "MAE": 492.391,
+        "Capture@20%": 0.673
+      },
+      "predicted_total_over_actual": 0.687
+    },
+    "model_C_headline": {
+      "R2": {
+        "value": 0.716,
+        "ci95": [
+          0.594,
+          0.782
+        ]
+      },
+      "MAE": {
+        "value": 594.396,
+        "ci95": [
+          521.148,
+          683.344
+        ]
+      },
+      "Capture@20%": {
+        "value": 0.74,
+        "ci95": [
+          0.695,
+          0.783
+        ]
+      },
+      "without_top10": {
+        "R2": 0.673,
+        "MAE": 491.989,
+        "Capture@20%": 0.671
+      },
+      "predicted_total_over_actual": 0.692
+    }
+  },
+  "test_capture_ceiling": 0.832,
+  "segments_test": {
+    "high_value_cutoff_gbp_from_train": 721.0,
+    "rows": [
+      {
+        "seg": "Protect",
+        "customers": 779,
+        "mean_future_spend": 3801.642,
+        "bought_again": 0.927,
+        "share of customers": 0.18,
+        "share of future money": 0.715
+      },
+      {
+        "seg": "Win back",
+        "customers": 25,
+        "mean_future_spend": 1637.327,
+        "bought_again": 0.64,
+        "share of customers": 0.006,
+        "share of future money": 0.01
+      },
+      {
+        "seg": "Grow",
+        "customers": 835,
+        "mean_future_spend": 594.275,
+        "bought_again": 0.757,
+        "share of customers": 0.193,
+        "share of future money": 0.12
+      },
+      {
+        "seg": "Low priority",
+        "customers": 2687,
+        "mean_future_spend": 240.314,
+        "bought_again": 0.406,
+        "share of customers": 0.621,
+        "share of future money": 0.156
+      }
+    ]
+  },
+  "targeting_test_top20": {
+    "model_C_mean_future_spend": 3543.0,
+    "past_spend_mean_future_spend": 3539.0,
+    "average_customer": 958.0,
+    "model_C_share_of_money": 0.74
+  },
+  "return_classifier_train_cv_auc": 0.778
+}

@@ -95,3 +95,8 @@ Random 20% = 958 GBP (the average).
 - Decile table (model C): top 10% of customers hold 61% of the future money; the bottom 50% hold about 10%.
 - Train out-of-fold: same picture (+272% vs +269% for past spend).
 - Break-even (arithmetic, not a result): for the targeted group a 20 GBP contact pays for itself if it lifts that customer's spend by 0.6%; for a random group, 2.1%. We measured who spends, not who responds.
+
+## STEP 15: model card, saved model and metrics file   [MODEL_CARD.md, src/step15_save.py, outputs/]
+- MODEL_CARD.md: one document with the data, snapshot design, model and how it was chosen, test results, segments, SHAP, limitations and the audit of choices, written from the notes above.
+- src/step15_save.py fits model C and the return classifier on all of train and writes outputs/model_c.joblib, outputs/logistic_return.joblib, outputs/model_spec.json and outputs/metrics.json. It reproduces the earlier numbers (test C: R2 0.716, MAE 594, Capture 0.740; top-20% targeting 3,543 GBP vs 958 average; classifier AUC 0.778; train CV on fresh seeds 20 to 29: R2 0.752, MAE 504). Reloading the saved model and predicting the test snapshot works (4,326 predictions, largest 95,530).
+- Loading needs src on the Python path (the model classes live in src/step7e_ratio.py and src/step10_repurchase_segmentation.py).
