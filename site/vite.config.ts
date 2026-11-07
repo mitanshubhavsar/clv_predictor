@@ -5,4 +5,6 @@ import { defineConfig } from "vite";
 export default defineConfig(({ command }) => ({
   base: command === "build" ? process.env.VITE_BASE ?? "/clv-stepwise/" : "/",
   plugins: [react()],
+  // The shared server has run out of inotify file watchers (ENOSPC), so poll instead.
+  server: { watch: { usePolling: true, interval: 500 } },
 }));

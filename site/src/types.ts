@@ -29,6 +29,6 @@ export type Dataset = {
   features: { schema: Schema[] };
 };
 export type Score = {
-  predicted_spend: number; multiplier: number; probability_buy_again: number; segment: string;
+  predicted_spend_gbp: number; multiplier: number; probability_buy_again: number; segment: string;
   reasons?: unknown;
 };

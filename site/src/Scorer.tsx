@@ -48,7 +48,7 @@ export default function Scorer({ presets }: { presets: Preset[] }) {
       } catch { setStatus("offline"); }
     }
     if (unchanged) {
-      setOut({ score: { predicted_spend: p.predicted_spend, multiplier: p.predicted_spend / Math.max(p.features.Monetary, 50), probability_buy_again: p.probability_buy_again, segment: p.segment }, source: "saved" });
+      setOut({ score: { predicted_spend_gbp: p.predicted_spend, multiplier: p.predicted_spend / Math.max(p.features.Monetary, 50), probability_buy_again: p.probability_buy_again, segment: p.segment }, source: "saved" });
     } else {
       setOut(null); setMsg("The live API is not reachable, so only the saved example scores can be shown. Pick an example without editing it.");
     }
@@ -80,7 +80,7 @@ export default function Scorer({ presets }: { presets: Preset[] }) {
       {msg && <p className="warn">{msg}</p>}
       {out && (
         <div className="result" aria-live="polite">
-          <div><span className="big">{gbp(out.score.predicted_spend)}</span><span className="sub"> expected spend, next 6 months</span></div>
+          <div><span className="big">{gbp(out.score.predicted_spend_gbp)}</span><span className="sub"> expected spend, next 6 months</span></div>
           <div><span className="big">{pct(out.score.probability_buy_again)}</span><span className="sub"> chance of buying again</span></div>
           <div><span className="big">{out.score.segment}</span><span className="sub"> segment</span></div>
           <p className="small">Source: {out.source === "api" ? "live API" : "saved score from the backtest"}.
