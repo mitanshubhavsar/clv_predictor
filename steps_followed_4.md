@@ -44,3 +44,5 @@ Summary of how the segments were made and decided (details in model_interpretati
 - Two yes/no answers per customer: High value? = predicted value in the top 20%; Likely to return? = probability > 50% (both cut-offs chosen by the user, not tuned).
 - The pair picks the block: yes/yes Protect, yes/no Win back, no/yes Grow, no/no Low priority.
 - Blocks are then checked against what really happened (actual spend, share who bought again, share of money). Classifier choice and the 90-day hand rule were my choices; results were looked at once, train only.
+
+Exact value cut-off (train): high value = predicted 6-month spend >= about 721 GBP (80th percentile of model C's out-of-fold predictions; median 233, 95th percentile 2,106).

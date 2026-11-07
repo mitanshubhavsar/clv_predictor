@@ -87,3 +87,5 @@ Made-up examples, to show the logic only:
 
 Meaning in practice: Protect = keep happy, no discounts needed. Win back = valuable but unlikely to return, run a win-back campaign. Grow = modest spend but loyal, upsell / cross-sell. Low priority = do not spend effort.
 The two questions are independent: value comes from model C, return probability from the classifier; neither model knows about the blocks.
+
+Exact cut-off (train, out-of-fold, model C): "high value" means a predicted 6-month spend of about 721 GBP or more (the 80th percentile). For scale: the median prediction is 233 GBP, the 95th percentile 2,106 GBP; the 80th percentile of past spend (Monetary) is 2,029 GBP, which is why the model's predictions (about 0.37 x past spend, adjusted) cut in at a much smaller number.
