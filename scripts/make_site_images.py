@@ -10,7 +10,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "site" / "public" / "img"
 OUT.mkdir(parents=True, exist_ok=True)
-BLUE, ORANGE, AQUA, GREY, INK, MUTED = "#2a78d6", "#eb6834", "#1baf7a", "#8a8984", "#0b0b0b", "#52514e"
+BLUE, ORANGE, AQUA, GREY, INK, MUTED = "#1f4fa3", "#d9531e", "#1baf7a", "#8a8984", "#1b1a17", "#5d5b55"
 plt.rcParams.update({"font.size": 11, "axes.spines.top": False, "axes.spines.right": False,
                      "axes.edgecolor": GREY, "axes.labelcolor": MUTED, "xtick.color": MUTED,
                      "ytick.color": MUTED, "axes.grid": True, "grid.color": "#e6e5e1",
@@ -131,7 +131,7 @@ def flow():
             x = 0.1 + i * (w + gap)
             hi = lab.startswith(("7", "9"))
             ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02,rounding_size=0.08",
-                                        fc="#eef4fc" if not hi else "#fdf1ec", ec=BLUE if not hi else ORANGE, lw=1.3))
+                                        fc="#eaf0fa" if not hi else "#fbefe8", ec=BLUE if not hi else ORANGE, lw=1.3))
             ax.text(x + w / 2, y + h / 2, lab, ha="center", va="center", fontsize=9.5, color=INK, weight="bold")
             pos.append((x, y))
     for (x1, y1), (x2, y2) in zip(pos, pos[1:]):

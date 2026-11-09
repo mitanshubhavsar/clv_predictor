@@ -146,3 +146,12 @@ Design item 2 of the agreed list. The About section is now a hero panel: small u
 Also: on phones the top navigation is one scrollable row instead of wrapping to three lines.
 Checked by screenshots in headless Chromium: desktop light, desktop dark, phone width; headline, buttons and the three numbers fit in the first desktop screen. Other sections were not re-checked on phone or dark.
 Next in the agreed list: 3 (palette and fonts), 4 (alternating sections and card layout), 6 (segment cards, timeline polish).
+
+---
+
+## STEP 18c done: palette and fonts   [site/src/main.tsx, site/src/styles.css, scripts/make_site_images.py, site/package.json]
+Design item 3. Fonts: Inter (body) and Source Serif 4 (headings, big numbers), installed as the npm packages @fontsource-variable/inter and @fontsource-variable/source-serif-4 (pinned 5.3.0 and 5.3.1) and bundled into the build: no request to Google, works offline, the same on every machine. System serif and sans stay as fallbacks. Verified in headless Chromium that both fonts load and the headline uses Source Serif.
+Palette: tokens kept (paper #faf8f4, ink #1b1a17, blue #1f4fa3, orange #d9531e, grey tones); contrast measured on paper: orange as small text was only 3.8:1 (fails 4.5), so a darker text orange #b8430f (5.15:1) is used for small labels and section numbers, the bright orange stays for bars, underline and icons. Blue 7.3:1, muted grey 6.4:1, ink 16.4:1; dark mode values all above 7:1.
+Figures regenerated with the same blue, orange, ink and grey (they were slightly different before). The categorical palette validator from the data-viz skill was NOT run on the figure colours (blue, orange, green, grey); the model-comparison and curve figures also rely on labels, line styles and direct values, not colour alone.
+Figures still use matplotlib's default font, so their type does not match the page; changing that needs the font files for matplotlib (not done).
+Nav tightened so the eight links fit on one row beside the brand at desktop width.
