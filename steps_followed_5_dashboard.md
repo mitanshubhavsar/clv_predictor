@@ -138,3 +138,11 @@ Done in CSS only, no content or number changed: warm paper background, serif hea
 Checked by screenshots in headless Chromium (Playwright from the ml_clv env) of the top of the page and of Business decisions. Not yet checked: phone width, dark mode, Results, Flow and Try-it.
 Note: `vite preview` served the built JS as 404 here (the /clv-stepwise/ base), so screenshots came from a build with base "/" and a plain static server. `npm run dev` is not affected.
 Next design steps (not started): fonts (Inter + a display serif), alternating section backgrounds, segment cards, icons, then charts.
+
+---
+
+## STEP 18b done: hero section   [site/src/App.tsx, site/src/Icons.tsx, site/src/styles.css]
+Design item 2 of the agreed list. The About section is now a hero panel: small uppercase kicker (customer lifetime value, UCI Online Retail II), large serif headline, lead text, two buttons (See the results -> #results, Try the scorer -> #try), a soft blue/orange gradient with a faint decorative rising curve and customer dots (inline SVG, aria-hidden), and the three headline numbers with an icon each (fit, error, top-20% funnel; inline SVG, no icon dependency). The honest-summary pull-quote stays below the numbers. The numbers still come from summary.json.
+Also: on phones the top navigation is one scrollable row instead of wrapping to three lines.
+Checked by screenshots in headless Chromium: desktop light, desktop dark, phone width; headline, buttons and the three numbers fit in the first desktop screen. Other sections were not re-checked on phone or dark.
+Next in the agreed list: 3 (palette and fonts), 4 (alternating sections and card layout), 6 (segment cards, timeline polish).

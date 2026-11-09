@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Scorer from "./Scorer";
+import { HeroArt, IconError, IconFit, IconTop } from "./Icons";
 import { Decisions, Flow, HeuristicsSection } from "./Story";
 import { gbp, img, loadJson, num, pct } from "./lib";
 import type { Dataset, Heuristics, Interval, ScorerData, Story, Summary } from "./types";
@@ -47,13 +48,21 @@ export default function App() {
         </nav>
       </header>
       <main>
-        <section id="about">
-          <h1>How much will each customer spend in the next 6 months?</h1>
-          <p className="lead">A model for an online gift retailer that predicts each customer's net spend (purchases minus returns) over the next 6 months, and groups customers into four action segments. Built and tested honestly: scored once on a later period it never saw.</p>
+        <section id="about" className="hero">
+          <HeroArt />
+          <div className="heroBody">
+            <p className="kicker">Customer lifetime value · UCI Online Retail II</p>
+            <h1>How much will each customer spend in the next 6 months?</h1>
+            <p className="lead">A model for an online gift retailer that predicts each customer's net spend (purchases minus returns) over the next 6 months, and groups customers into four action segments. Built and tested honestly: scored once on a later period it never saw.</p>
+            <div className="cta">
+              <a className="btn primary" href="#results">See the results</a>
+              <a className="btn" href="#try">Try the scorer</a>
+            </div>
+          </div>
           <div className="tiles">
-            <div className="tile"><b>{num(C.R2.value, 2)}</b><span>R² on the test period</span></div>
-            <div className="tile"><b>{gbp(C.MAE.value)}</b><span>average error per customer</span></div>
-            <div className="tile"><b>{pct(C["Capture@20%"].value)}</b><span>of future money held by the model's top 20%</span></div>
+            <div className="tile"><span className="ico"><IconFit /></span><b>{num(C.R2.value, 2)}</b><span>R² on the test period</span></div>
+            <div className="tile"><span className="ico"><IconError /></span><b>{gbp(C.MAE.value)}</b><span>average error per customer</span></div>
+            <div className="tile"><span className="ico"><IconTop /></span><b>{pct(C["Capture@20%"].value)}</b><span>of future money held by the model's top 20%</span></div>
           </div>
           <p className="callout"><strong>The honest summary.</strong> A plain rule, "sort by past spend", is almost as good. The model is about {gbp(diff["MAE gain"].point)} ({pct(diff["MAE gain"].point / P.MAE.value)}) more accurate per customer, and identical for ranking. Use it to size and prioritise customers, not as a big upgrade. It is not causal and says nothing about margin.</p>
         </section>

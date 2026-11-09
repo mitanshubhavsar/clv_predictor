@@ -18,7 +18,7 @@ nav a:hover{color:var(--ink)}nav a.cur{color:var(--ink);border-bottom-color:var(
 
 main{max-width:960px;margin:0 auto;padding:0 16px 40px;counter-reset:sec}
 section{padding:72px 0 56px;border-top:1px solid var(--line);counter-increment:sec}
-section:first-child{border-top:0;padding-top:64px}
+
 section>p,section>ul,section>ol,section>h3,section>dl{max-width:720px}
 
 h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.01em;line-height:1.15}
@@ -51,6 +51,23 @@ figcaption{color:var(--mut);font-size:.85rem;margin-top:8px;max-width:720px}
 .skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:var(--bg);padding:6px;z-index:9}
 .src{color:var(--mut);font-size:.8rem;margin:8px 0 0}.warn{color:var(--warn)}
 
+/* Hero */
+section.hero{position:relative;overflow:hidden;margin:28px 0 8px;padding:40px 44px 28px;border:1px solid var(--line);border-radius:16px;
+  background:radial-gradient(900px 380px at 100% 0%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 70%),radial-gradient(600px 300px at 0% 100%,color-mix(in srgb,var(--hi) 10%,transparent),transparent 70%),var(--card)}
+.heroArt{position:absolute;right:-10px;top:10px;width:min(58%,520px);height:auto;color:var(--acc);opacity:.22;pointer-events:none}
+.heroBody{position:relative}
+.kicker{font:600 .78rem var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--acc);margin:0 0 6px}
+section.hero h1::before{display:none}
+section.hero h1{max-width:20ch;font-size:clamp(2.2rem,5.4vw,3.5rem)}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin:26px 0 8px}
+.btn{display:inline-block;padding:12px 22px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);text-decoration:none;font:600 .92rem var(--sans);transition:transform .15s,background .15s}
+.btn:hover{transform:translateY(-1px);background:var(--soft)}
+.btn.primary{background:var(--ink);color:var(--bg)}.btn.primary:hover{background:var(--ink);filter:brightness(1.25)}
+section.hero .tiles{position:relative;border-top:1px solid var(--line);margin:26px 0 20px}
+.ico{display:block;color:var(--hi);margin-bottom:10px}.tile .ico svg{display:block}
+section.hero .tile span:not(.ico){display:block}
+@media (max-width:600px){section.hero{padding:36px 20px 28px;border-radius:12px}.heroArt{width:90%;opacity:.12}}
+
 /* Flow */
 .stages{list-style:none;padding:0;margin:40px 0;max-width:720px}
 .stages>li{position:relative;border-left:2px solid var(--line);padding:0 0 16px 28px;margin-bottom:28px}
@@ -82,4 +99,4 @@ input:focus{outline:2px solid var(--acc);outline-offset:1px}
 .small{grid-column:1/-1;color:var(--mut);font-size:.82rem;margin:0}
 
 footer{max-width:960px;margin:0 auto;padding:28px 16px 48px;color:var(--mut);font-size:.82rem;border-top:1px solid var(--line)}
-@media (max-width:600px){body{font-size:16px}.tile+.tile{padding-left:0;border-left:0}.tile{border-top:1px solid var(--line)}section{padding:48px 0 40px}}
+@media (max-width:600px){nav{flex-wrap:nowrap;overflow-x:auto;width:100%;gap:16px;padding-bottom:2px;scrollbar-width:none}nav a{white-space:nowrap}header{gap:8px}body{font-size:16px}.tile+.tile{padding-left:0;border-left:0}.tile{border-top:1px solid var(--line)}section{padding:48px 0 40px}}
