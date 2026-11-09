@@ -163,3 +163,13 @@ Design item 4. Every second section (Dataset, Architecture, Heuristics, Try it) 
 Fixed while checking: the feature table showed raw floats (0.08823529411764706, 6024.5275); now rounded to at most two decimals.
 Checked by screenshots in headless Chromium (light, full page, and dark for the heuristics section). Not checked: phone width for the bands, Flow, Architecture, Try it in dark.
 Not done from the original item 4: segment cards (item 6), a mobile menu.
+
+---
+
+## STEP 18e done: segment cards, flow timeline polish, table highlight   [site/src/Segments.tsx, Story.tsx, Icons.tsx, styles.css]
+Design item 6.
+- Results, Segments: the table is replaced by four cards (Protect blue with a shield, Win back orange with a return arrow, Grow green with a sprout, Low priority grey with a minus), each showing share of future money as the big number, share of customers and count, two small bars (customers vs money), mean future spend, bought again, and the suggested action. Identity is carried by name and icon as well as colour. The actions are rules of thumb from the labels, and the Win back card says "lead, not confirmed" (as in business decisions). Numbers come from summary.json. Four across on desktop, one column on phone.
+- Flow: each stage is a card; "What we found" is a highlighted block; the two turning points (try models, score once on test) carry a "Turning point" pill.
+- Model C row in the Results table is tinted. The mean-baseline R2 now shows 0.00 instead of -0.00.
+Checked by screenshots in headless Chromium (light and dark for the cards, phone width for the cards, one flow stage). Not checked: the whole Flow section on a phone.
+Remaining ideas from the original list, not started: icons elsewhere, scroll-in animation, footer links to the model card and API docs, interactive charts, Google-style polish of the figures' font.

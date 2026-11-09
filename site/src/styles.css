@@ -57,6 +57,22 @@ main>section:nth-child(even)+section{border-top:0}
 .takeaway{font:italic 400 1.2rem/1.5 var(--serif);color:var(--mut);margin:-8px 0 26px;max-width:34em}
 .scroll{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 16px}
 
+/* Segment cards */
+.segcards{list-style:none;padding:0;margin:20px 0 8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+section>.segcards{max-width:none}
+.segcard{--c:var(--acc);background:var(--card);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:10px;padding:16px 18px 18px}
+.segcard.protect{--c:#1f4fa3}.segcard.winback{--c:#d9531e}.segcard.grow{--c:#14815a}.segcard.low{--c:#8a8984}
+@media (prefers-color-scheme:dark){.segcard.protect{--c:#7fa8ee}.segcard.grow{--c:#4fc796}.segcard.winback{--c:#f08a5d}}
+.segHead{display:flex;align-items:center;gap:10px;color:var(--c)}.segHead h4{margin:0;font:700 1.15rem var(--serif);color:var(--ink)}
+.segMoney{margin:12px 0 0;font:700 2.1rem/1 var(--serif);color:var(--c)}.segMoney span{font:400 .85rem var(--sans);color:var(--mut)}
+.segSub{margin:4px 0 12px;font-size:.82rem;color:var(--mut)}
+.bars{display:grid;gap:6px;margin-bottom:12px}.bars div{display:grid;grid-template-columns:64px 1fr;align-items:center;gap:6px}
+.bars span{font-size:.7rem;color:var(--mut)}.bars b{display:block;position:relative;height:12px;background:var(--soft);border-radius:4px;overflow:hidden}
+.bars i{position:absolute;left:0;top:0;bottom:0;background:var(--c);border-radius:4px}
+.segStats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}.segStats dt{margin:0;font:600 .66rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}.segStats dd{margin:2px 0 0;font:700 1.05rem var(--serif)}
+.segAction{margin:0;font-size:.85rem;line-height:1.45;border-top:1px solid var(--line);padding-top:10px}.segAction em{color:var(--mut)}
+tr.hl td{background:color-mix(in srgb,var(--acc) 9%,transparent)}
+
 /* Hero */
 section.hero{position:relative;overflow:hidden;margin:28px 0 8px;padding:40px 44px 28px;border:1px solid var(--line);border-radius:16px;
   background:radial-gradient(900px 380px at 100% 0%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 70%),radial-gradient(600px 300px at 0% 100%,color-mix(in srgb,var(--hi) 10%,transparent),transparent 70%),var(--card)}
@@ -80,6 +96,10 @@ section.hero .tile span:not(.ico){display:block}
 .stages h3{margin:0 0 8px}
 .num{position:absolute;left:-15px;top:0;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--bg);font:600 .8rem var(--sans)}
 dl{margin:0}dt{font:600 .72rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--hit);margin-top:12px}dd{margin:3px 0 0}
+
+dd.found{background:var(--soft);border-left:3px solid var(--acc);padding:8px 12px;border-radius:0 6px 6px 0}
+.turn{display:inline-block;margin-left:10px;vertical-align:middle;font:600 .66rem var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--hit);border:1px solid var(--hit);border-radius:999px;padding:2px 9px}
+.stages>li{background:var(--card);border:1px solid var(--line);border-left:2px solid var(--line);border-radius:8px;padding:16px 20px 12px 28px}
 
 /* Decisions */
 .decision{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--acc);border-radius:6px;padding:6px 22px 18px;margin:20px 0;max-width:720px}

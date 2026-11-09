@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Scorer from "./Scorer";
+import { SegmentCards } from "./Segments";
 import { HeroArt, IconError, IconFit, IconTop } from "./Icons";
 import { Decisions, Flow, HeuristicsSection } from "./Story";
 import { gbp, img, loadJson, num, pct } from "./lib";
@@ -104,7 +105,7 @@ export default function App() {
           <p>Test period, {s.n_test.toLocaleString("en-GB")} customers ({pct(s.zero_share_test)} spent nothing). Intervals are 95% bootstraps over customers.</p>
           <div className="scroll"><table><thead><tr><th>Model</th><th>R²</th><th>MAE</th><th>Capture of money, top 20%</th></tr></thead><tbody>
             <tr><td>Sort by past spend</td><td>{ci(P.R2, (x) => num(x))}</td><td>{ci(P.MAE, gbp)}</td><td>{ci(P["Capture@20%"], (x) => num(x))}</td></tr>
-            <tr><td><strong>Model C</strong></td><td>{ci(C.R2, (x) => num(x))}</td><td>{ci(C.MAE, gbp)}</td><td>{ci(C["Capture@20%"], (x) => num(x))}</td></tr>
+            <tr className="hl"><td><strong>Model C</strong></td><td>{ci(C.R2, (x) => num(x))}</td><td>{ci(C.MAE, gbp)}</td><td>{ci(C["Capture@20%"], (x) => num(x))}</td></tr>
           </tbody></table></div>
           <p>Model C minus past spend: R² {diff.R2.point >= 0 ? "+" : ""}{num(diff.R2.point)} [{num(diff.R2.ci[0])}, {num(diff.R2.ci[1])}] · MAE better by {gbp(diff["MAE gain"].point)} [{gbp(diff["MAE gain"].ci[0])}, {gbp(diff["MAE gain"].ci[1])}] · capture {num(diff["Capture@20%"].point)} (no difference). Perfect ranking would capture {pct(s.capture_ceiling)}.</p>
           <Fig src="capture_curves.png" alt="Revenue capture curves" caption="Contacting customers best-first: the model and the past-spend sort lie on top of each other." />
@@ -113,8 +114,7 @@ export default function App() {
           <p>The top 20% by model C spend {gbp(s.targeting.model_C_mean_future_spend)} each in the next 6 months against {gbp(s.targeting.average_customer)} for the average customer, and hold {pct(s.targeting.model_C_share_of_money)} of future money. Past spend gives {gbp(s.targeting.past_spend_mean_future_spend)}. This measures ranking, not campaign ROI.</p>
           <h3>Segments</h3>
           <p>High value = predicted spend of {gbp(s.high_value_cutoff_gbp)} or more; likely to return = probability of buying again above 50%.</p>
-          <div className="scroll"><table><thead><tr><th>Segment</th><th>Customers</th><th>Share of money</th><th>Mean future spend</th><th>Bought again</th></tr></thead>
-            <tbody>{s.segments.map((g) => <tr key={g.segment}><td>{g.segment}</td><td>{g.customers.toLocaleString("en-GB")} ({pct(g["share of customers"])})</td><td>{pct(g["share of future money"], 1)}</td><td>{gbp(g.mean_future_spend)}</td><td>{pct(g.bought_again)}</td></tr>)}</tbody></table></div>
+          <SegmentCards segments={s.segments} />
           <Fig src="shap_importance.png" alt="Feature importance" caption="What the model uses. This shows use, not proven accuracy gain." />
           <h3>Limits</h3>
           <ul>

@@ -16,3 +16,8 @@ export function HeroArt() {
     </svg>
   );
 }
+
+export const IconProtect = () => (<svg {...base}><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z" /><path d="M9 12l2 2 4-4" /></svg>);
+export const IconWinBack = () => (<svg {...base}><path d="M4 12a8 8 0 1 0 3-6.2" /><path d="M4 4v4h4" /></svg>);
+export const IconGrow = () => (<svg {...base}><path d="M12 21v-9" /><path d="M12 12C12 8 9 6 5 6c0 4 2 6 7 6z" /><path d="M12 14c0-3 2-5 6-5 0 3-2 5-6 5z" /></svg>);
+export const IconLow = () => (<svg {...base}><circle cx="12" cy="12" r="9" /><path d="M8 12h8" /></svg>);

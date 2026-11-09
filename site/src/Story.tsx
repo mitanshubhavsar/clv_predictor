@@ -20,7 +20,7 @@ function StageTable({ stage, story, s }: { stage: FlowStage; story: Story; s: Su
           <caption>Every model tried, 5-fold cross-validation on the training period</caption>
           <thead><tr><th>Model</th><th>R²</th><th>MAE</th><th>Capture, top 20%</th></tr></thead>
           <tbody>{s.model_comparison.map((m) => (
-            <tr key={m.model}><td>{m.model}</td><td>{num(m.R2, 2)}</td><td>{gbp(m.MAE)}</td><td>{num(m["Capture@20%"], 2)}</td></tr>
+            <tr key={m.model}><td>{m.model}</td><td>{Math.abs(m.R2) < 0.005 ? "0.00" : num(m.R2, 2)}</td><td>{gbp(m.MAE)}</td><td>{num(m["Capture@20%"], 2)}</td></tr>
           ))}</tbody>
         </table>
       </div>
@@ -40,6 +40,8 @@ function StageTable({ stage, story, s }: { stage: FlowStage; story: Story; s: Su
   return null;
 }
 
+const TURNING = new Set(["models", "test"]);
+
 export function Flow({ story, s }: { story: Story; s: Summary }) {
   return (
     <>
@@ -51,11 +53,11 @@ export function Flow({ story, s }: { story: Story; s: Summary }) {
       <ol className="stages">
         {story.flow.map((st, i) => (
           <li key={st.id} id={`stage-${st.id}`}>
-            <h3><span className="num">{i + 1}</span> {st.title}</h3>
+            <h3><span className="num">{i + 1}</span> {st.title}{TURNING.has(st.id) ? <span className="turn">Turning point</span> : null}</h3>
             <dl>
               <dt>What we did</dt><dd>{fill(st.did, s)}</dd>
               <dt>Why</dt><dd>{fill(st.why, s)}</dd>
-              <dt>What we found</dt><dd>{fill(st.found, s)}</dd>
+              <dt>What we found</dt><dd className="found">{fill(st.found, s)}</dd>
             </dl>
             <StageTable stage={st} story={story} s={s} />
             <p className="src">Notes: {st.source}</p>
