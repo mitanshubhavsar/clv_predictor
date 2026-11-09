@@ -1,0 +1,75 @@
+{
+ "diagnostic": {
+  "test_best_k": 0.509972025745988,
+  "model_C_rescaled_to_actual_total": {
+   "R2": 0.852399455915924,
+   "MAE": 580.9724054272111,
+   "Capture@20%": 0.7395310533164511
+  },
+  "past_spend_ratio_train": 0.3703184967201627,
+  "past_spend_ratio_test": 0.509972025745988
+ },
+ "textbook": {
+  "arpu": 50,
+  "margin": 0.8,
+  "churn": 0.05,
+  "clv": 800.0
+ },
+ "ours": {
+  "train": {
+   "customers": 4242,
+   "arpu_active": 1485.2665669445805,
+   "churn": 0.5193305044790193,
+   "mean_all": 713.9223314474305,
+   "clv_formula1": 2859.9640385741764
+  },
+  "test": {
+   "customers": 4326,
+   "arpu_active": 1684.012828118651,
+   "churn": 0.4311141932501156,
+   "mean_all": 958.010996301433,
+   "clv_formula1": 3906.1873964832625
+  },
+  "lifetimes_periods_train": 1.9255560599182933
+ },
+ "fitted_k": 0.3703184967201627,
+ "implied_lifespan_fraction": 0.7406369934403254,
+ "table": [
+  {
+   "name": "One average for everyone",
+   "how": "Every customer gets the same number: the average 6-month spend on the training period.",
+   "fitted_on_train": "one number",
+   "R2": -0.0021982974807694955,
+   "MAE": 1085.782176654955,
+   "Capture@20%": 0.16272009450193,
+   "total_pred_over_actual": 0.7452130864923794
+  },
+  {
+   "name": "AOV x orders x 6 months, assume everyone stays",
+   "how": "Order value x orders per 6 months x lifespan of 1 period (the whole 6 months). Nothing fitted.",
+   "fitted_on_train": "nothing",
+   "R2": 0.821855435032838,
+   "MAE": 599.1863072122053,
+   "Capture@20%": 0.7387450493298288,
+   "total_pred_over_actual": 0.9804459357718672
+  },
+  {
+   "name": "Same, with the lifespan fitted on train",
+   "how": "The same formula with the lifespan set to 0.74 of the period, fitted on the training period. This equals 0.37 x past spend.",
+   "fitted_on_train": "one number",
+   "R2": 0.7065271935138963,
+   "MAE": 613.4769969298104,
+   "Capture@20%": 0.7387450493298288,
+   "total_pred_over_actual": 0.7261545301008622
+  },
+  {
+   "name": "Model C",
+   "how": "The boosted-tree multiplier times past spend.",
+   "fitted_on_train": "a model",
+   "R2": 0.7158420499368199,
+   "MAE": 594.3959454692557,
+   "Capture@20%": 0.7395310533164511,
+   "total_pred_over_actual": 0.6916025527462163
+  }
+ ]
+}

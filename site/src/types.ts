@@ -42,3 +42,14 @@ export type Decision = {
 export type Story = {
   flow: FlowStage[]; features_table: string[][]; decisions: Decision[]; not_done: string[];
 };
+
+export type HeuristicRow = {
+  name: string; how: string; fitted_on_train: string; R2: number; MAE: number; "Capture@20%": number; total_pred_over_actual: number;
+};
+type Period = { customers: number; arpu_active: number; churn: number; mean_all: number; clv_formula1: number };
+export type Heuristics = {
+  textbook: { arpu: number; margin: number; churn: number; clv: number };
+  ours: { train: Period; test: Period; lifetimes_periods_train: number };
+  fitted_k: number; implied_lifespan_fraction: number; table: HeuristicRow[];
+  diagnostic: { test_best_k: number; model_C_rescaled_to_actual_total: { R2: number; MAE: number }; past_spend_ratio_train: number; past_spend_ratio_test: number };
+};

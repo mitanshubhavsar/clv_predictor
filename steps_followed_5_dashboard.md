@@ -121,3 +121,11 @@ Requested by the user. Written from steps_followed_1 to 5, baseline_metrics_1, m
 - Numbers: the targeting figures are filled from summary.json via placeholders; the rest of the narrative numbers are copied by hand from the notes into story.json (that file says so). If the notes change, story.json has to be edited.
 - Step 13 and the BG/NBD baseline are not mentioned, per earlier decisions.
 Check: tsc type-check and vite build pass. Not yet looked at in a browser.
+
+---
+
+## STEP 17f done: "No ML: heuristic CLV" section   [scripts/export_heuristics.py, site/public/data/heuristics.json, site/src/Story.tsx]
+Requested by the user (pasted the two textbook formulas). Section shows: (1) CLV = ARPU x margin / churn with the textbook example ($50 x 0.8 / 0.05 = $800) and our data (6-month periods, revenue only: ARPU of buyers 1,485 GBP, 52% buy nothing next period, so about 2,860 GBP revenue over about 1.9 periods); (2) AOV x orders x lifespan x margin applied per customer for a 6-month horizon (= half of past spend). Limits stated: formula 1 is one number for everyone (scores like the mean); churn in retail is only a proxy; no margin data.
+Scored on the test snapshot (same measures as model C): average for everyone R2 -0.002, MAE 1,086, capture 0.163; "everyone stays" rule (0.5 x past spend, nothing fitted) R2 0.822, MAE 599, capture 0.739, total 0.98 of actual; lifespan fitted on train (0.37 x past spend) 0.707 / 613 / 0.739; model C 0.716 / 594 / 0.740.
+FINDING worth knowing: the unfitted 0.5 rule has HIGHER R2 than model C (0.82 vs 0.72). Cause is a level shift: actual future spend per pound of past spend was 0.37 on train and 0.51 on test, so everything fitted on train under-predicts totals (model C 69%, past spend 73% of actual). Diagnostic only, uses test outcomes so it is NOT a result: model C rescaled to the actual total would give R2 0.85. Ranking and MAE are unaffected (capture identical, MAE 599 vs 594). The section says this on the page. Possible later improvement to discuss: handle period-to-period level shift (for example check the ratio on the most recent data before using the model).
+Build and type-check pass; not yet looked at in a browser.

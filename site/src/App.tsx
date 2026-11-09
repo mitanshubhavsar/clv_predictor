@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import Scorer from "./Scorer";
-import { Decisions, Flow } from "./Story";
+import { Decisions, Flow, HeuristicsSection } from "./Story";
 import { gbp, img, loadJson, num, pct } from "./lib";
-import type { Dataset, Interval, ScorerData, Story, Summary } from "./types";
+import type { Dataset, Heuristics, Interval, ScorerData, Story, Summary } from "./types";
 
-const SECTIONS = [["about", "About"], ["dataset", "Dataset"], ["flow", "Flow"], ["architecture", "Architecture"], ["results", "Results"], ["decisions", "Business decisions"], ["try", "Try it"]];
+const SECTIONS = [["about", "About"], ["dataset", "Dataset"], ["flow", "Flow"], ["architecture", "Architecture"], ["results", "Results"], ["heuristics", "No-ML heuristics"], ["decisions", "Business decisions"], ["try", "Try it"]];
 
 const ci = (m: Interval, f: (x: number) => string) => `${f(m.value)} [${f(m.ci95[0])}, ${f(m.ci95[1])}]`;
 
@@ -17,12 +17,13 @@ export default function App() {
   const [d, setD] = useState<Dataset | null>(null);
   const [sc, setSc] = useState<ScorerData | null>(null);
   const [story, setStory] = useState<Story | null>(null);
+  const [heur, setHeur] = useState<Heuristics | null>(null);
   const [err, setErr] = useState("");
   const [active, setActive] = useState("about");
 
   useEffect(() => {
-    Promise.all([loadJson<Summary>("summary"), loadJson<Dataset>("dataset"), loadJson<ScorerData>("scorer"), loadJson<Story>("story")])
-      .then(([a, b, c, e]) => { setS(a); setD(b); setSc(c); setStory(e); })
+    Promise.all([loadJson<Summary>("summary"), loadJson<Dataset>("dataset"), loadJson<ScorerData>("scorer"), loadJson<Story>("story"), loadJson<Heuristics>("heuristics")])
+      .then(([a, b, c, e, f]) => { setS(a); setD(b); setSc(c); setStory(e); setHeur(f); })
       .catch((e: Error) => setErr(e.message));
   }, []);
 
@@ -33,7 +34,7 @@ export default function App() {
   }, [s]);
 
   if (err) return <main><p className="warn">Could not load the saved results: {err}</p></main>;
-  if (!s || !d || !sc || !story) return <main><p>Loading…</p></main>;
+  if (!s || !d || !sc || !story || !heur) return <main><p>Loading…</p></main>;
   const C = s.test.model_C_headline, P = s.test.past_spend, diff = s.diff_vs_past_spend;
 
   return (
@@ -109,6 +110,11 @@ export default function App() {
             <li>Two snapshots from one retailer with Christmas-heavy seasons.</li>
             <li>The test period was scored once for the model, and later also used to describe segments.</li>
           </ul>
+        </section>
+
+        <section id="heuristics">
+          <h2>No ML: heuristic CLV</h2>
+          <HeuristicsSection h={heur} />
         </section>
 
         <section id="decisions">
