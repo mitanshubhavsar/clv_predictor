@@ -32,3 +32,13 @@ export type Score = {
   predicted_spend_gbp: number; multiplier: number; probability_buy_again: number; segment: string;
   reasons?: unknown;
 };
+
+export type FlowStage = {
+  id: string; title: string; did: string; why: string; found: string; source: string; table?: "models" | "features";
+};
+export type Decision = {
+  id: string; title: string; evidence: string; how: string; result: string; limit: string;
+};
+export type Story = {
+  flow: FlowStage[]; features_table: string[][]; decisions: Decision[]; not_done: string[];
+};

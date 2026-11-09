@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import Scorer from "./Scorer";
+import { Decisions, Flow } from "./Story";
 import { gbp, img, loadJson, num, pct } from "./lib";
-import type { Dataset, Interval, ScorerData, Summary } from "./types";
+import type { Dataset, Interval, ScorerData, Story, Summary } from "./types";
 
-const SECTIONS = [["about", "About"], ["dataset", "Dataset"], ["architecture", "Architecture"], ["results", "Results"], ["try", "Try it"]];
+const SECTIONS = [["about", "About"], ["dataset", "Dataset"], ["flow", "Flow"], ["architecture", "Architecture"], ["results", "Results"], ["decisions", "Business decisions"], ["try", "Try it"]];
 
 const ci = (m: Interval, f: (x: number) => string) => `${f(m.value)} [${f(m.ci95[0])}, ${f(m.ci95[1])}]`;
 
@@ -15,12 +16,13 @@ export default function App() {
   const [s, setS] = useState<Summary | null>(null);
   const [d, setD] = useState<Dataset | null>(null);
   const [sc, setSc] = useState<ScorerData | null>(null);
+  const [story, setStory] = useState<Story | null>(null);
   const [err, setErr] = useState("");
   const [active, setActive] = useState("about");
 
   useEffect(() => {
-    Promise.all([loadJson<Summary>("summary"), loadJson<Dataset>("dataset"), loadJson<ScorerData>("scorer")])
-      .then(([a, b, c]) => { setS(a); setD(b); setSc(c); })
+    Promise.all([loadJson<Summary>("summary"), loadJson<Dataset>("dataset"), loadJson<ScorerData>("scorer"), loadJson<Story>("story")])
+      .then(([a, b, c, e]) => { setS(a); setD(b); setSc(c); setStory(e); })
       .catch((e: Error) => setErr(e.message));
   }, []);
 
@@ -31,7 +33,7 @@ export default function App() {
   }, [s]);
 
   if (err) return <main><p className="warn">Could not load the saved results: {err}</p></main>;
-  if (!s || !d || !sc) return <main><p>Loading…</p></main>;
+  if (!s || !d || !sc || !story) return <main><p>Loading…</p></main>;
   const C = s.test.model_C_headline, P = s.test.past_spend, diff = s.diff_vs_past_spend;
 
   return (
@@ -70,6 +72,11 @@ export default function App() {
             <tbody>{d.features.schema.map((r) => <tr key={r.column}><td>{r.column}</td><td>{r.meaning}</td><td>{r.p5} / {r.median} / {r.p95}</td></tr>)}</tbody></table></div>
         </section>
 
+        <section id="flow">
+          <h2>Flow of the application</h2>
+          <Flow story={story} s={s} />
+        </section>
+
         <section id="architecture">
           <h2>Architecture</h2>
           <Fig src="pipeline.png" alt="Pipeline: raw invoices, clean, ledger, snapshot, features, model C" caption="Every step uses the same code in training and in the API, so features cannot drift." />
@@ -102,6 +109,11 @@ export default function App() {
             <li>Two snapshots from one retailer with Christmas-heavy seasons.</li>
             <li>The test period was scored once for the model, and later also used to describe segments.</li>
           </ul>
+        </section>
+
+        <section id="decisions">
+          <h2>Business decisions</h2>
+          <Decisions story={story} s={s} />
         </section>
 
         <section id="try">

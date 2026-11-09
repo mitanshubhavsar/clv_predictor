@@ -115,7 +115,38 @@ def serving():
     save(fig, "serving.png")
 
 
+def flow():
+    """The whole project as one picture: 13 stages in two rows."""
+    labels = ["1 Raw data", "2 Clean,\nnet returns", "3 Time split", "4 RFM\nfeatures", "5 Study\nthe target", "6 Baselines",
+              "7 Try models", "8 Test features\none by one", "9 Final model,\ntest once", "10 Segments", "11 Explain\n(SHAP)",
+              "12 Targeting", "13 Package:\nAPI, dashboard,\nsite"]
+    rows = [labels[:7], labels[7:]]
+    w, h, gap = 1.7, 0.95, 0.35
+    fig, ax = plt.subplots(figsize=(14, 4.4))
+    ax.axis("off"); ax.set_xlim(0, 7 * (w + gap)); ax.set_ylim(0, 4.2)
+    pos = []
+    for r, row in enumerate(rows):
+        y = 2.7 - r * 2.0
+        for i, lab in enumerate(row):
+            x = 0.1 + i * (w + gap)
+            hi = lab.startswith(("7", "9"))
+            ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02,rounding_size=0.08",
+                                        fc="#eef4fc" if not hi else "#fdf1ec", ec=BLUE if not hi else ORANGE, lw=1.3))
+            ax.text(x + w / 2, y + h / 2, lab, ha="center", va="center", fontsize=9.5, color=INK, weight="bold")
+            pos.append((x, y))
+    for (x1, y1), (x2, y2) in zip(pos, pos[1:]):
+        if y1 == y2:
+            ax.annotate("", xy=(x2, y2 + h / 2), xytext=(x1 + w, y1 + h / 2), arrowprops=dict(arrowstyle="->", color=GREY, lw=1.3))
+        else:  # wrap to the second row: down, left, down
+            ym = (y1 + y2 + h) / 2
+            ax.plot([x1 + w / 2, x1 + w / 2, x2 + w / 2], [y1, ym, ym], color=GREY, lw=1.3)
+            ax.annotate("", xy=(x2 + w / 2, y2 + h), xytext=(x2 + w / 2, ym), arrowprops=dict(arrowstyle="->", color=GREY, lw=1.3))
+    ax.text(0.1, 0.35, "Orange = where the plan changed: models only matched the simple rule, and the final model was scored on the later test period exactly once.",
+            fontsize=9, color=MUTED)
+    save(fig, "flow.png")
+
+
 if __name__ == "__main__":
-    for f in (capture, comparison, shap, pipeline, timeline, serving):
+    for f in (capture, comparison, shap, pipeline, timeline, serving, flow):
         f()
     print("wrote", sorted(p.name for p in OUT.glob("*.png")))

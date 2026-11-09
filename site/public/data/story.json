@@ -1,0 +1,155 @@
+{
+  "note": "Written by hand from the project notes (steps_followed_1 to 5, baseline_metrics_1, model_tried_summary_2, feature_adding_3, model_interpretation_4, business_decisions_5). Placeholders like {{top_c}} are filled from summary.json when the page renders.",
+  "flow": [
+    {
+      "id": "data", "title": "Look at the raw data",
+      "did": "Checked the size, the columns and the obvious problems before touching anything.",
+      "why": "Every later choice depends on what one row means: here it is one product line on an invoice, not one customer.",
+      "found": "1,067,371 rows, 5,942 customers, 24 months. 23% of rows have no customer ID, and about 19,500 rows are cancellations.",
+      "source": "steps_followed_1.md"
+    },
+    {
+      "id": "clean", "title": "Clean, and net the returns",
+      "did": "Dropped rows with no customer ID and non-positive prices. Moved cancelled invoices into a separate returns table. Removed internal codes (manual entries, test rows, bank charges) but kept postage.",
+      "why": "Gross spend would call a customer who ordered £168,472 and cancelled almost all of it the 8th biggest customer. Netting returns off removes the problem at its source, with no arbitrary clipping. Postage is real money the customer pays; internal codes say nothing about behaviour.",
+      "found": "Net spend is only about 4% below gross overall, but that customer drops from £168,472 to £3. Row counts add up exactly (the script asserts it).",
+      "source": "steps_followed_1.md"
+    },
+    {
+      "id": "split", "title": "Decide how to split time",
+      "did": "Compared four ways to use the 24 months and chose two out-of-time snapshots: 12 months of history to describe a customer, then 6 months of future to predict. Train cutoff 2010-12-01, test cutoff 2011-06-01.",
+      "why": "A random split of customers only tests 'customers like the training ones in the same period'. An out-of-time test asks the real question: can the model predict a period it has never seen? Features only look backwards, and the two target periods never overlap.",
+      "found": "Only customers who bought in the history window are scored (new customers cannot be predicted from history). Customers who then buy nothing stay in with a target of 0, otherwise the model would learn that everyone keeps buying.",
+      "source": "steps_followed_1.md"
+    },
+    {
+      "id": "rfm", "title": "Build the first features: RFM",
+      "did": "Recency (days since last purchase), Frequency (purchase invoices) and Monetary (net spend), all measured at the cutoff date.",
+      "why": "Measured from the cutoff, not from today, so train and test are comparable. Returns reduce Monetary but do not count as purchases for Recency or Frequency.",
+      "found": "One row per customer per snapshot, built by one function that the API uses too.",
+      "source": "steps_followed_1.md"
+    },
+    {
+      "id": "target", "title": "Study the target",
+      "did": "Looked at the distribution of the future spend before choosing any model.",
+      "why": "The shape of the target decides which models make sense.",
+      "found": "About half of customers buy nothing in the next 6 months, and the money is concentrated: the top 10% of buyers hold 56 to 58% of it. Negative values (51 and 28 customers) are refunds and were floored at 0. Whether someone buys again is very predictable from RFM, so 'will they buy?' and 'how much?' are different questions.",
+      "source": "steps_followed_1.md"
+    },
+    {
+      "id": "baseline", "title": "Set the bar: baselines",
+      "did": "Before any machine learning, tried two rules: predict the average for everyone, and predict 0.37 x past spend.",
+      "why": "A model is only worth building if it beats the simple rule that a spreadsheet can do.",
+      "found": "Past spend is a strong rule: R² 0.75 in cross-validation and 0.71 on the test period, and it already captures 74% of future money in its top 20%. Everything after this has to beat that by more than the noise.",
+      "source": "steps_followed_2.md, baseline_metrics_1.md"
+    },
+    {
+      "id": "models", "title": "Try models, one at a time",
+      "did": "Tried a log-scale Ridge, XGBoost on raw pounds, XGBoost with the Tweedie loss, and a two-stage 'hurdle' model, each tuned with 250 Optuna trials on train cross-validation only.",
+      "why": "Each addresses a known feature of the target: skew, zeros, or both. Tuning scores run optimistic, so every winner was re-checked on fresh fold splits.",
+      "found": "None beat past spend. Tree models cannot predict the giants: they answer with a bucket average, so a customer with £318,751 of past spend got a prediction of about £32,000 when the rule gives £120,000. The fix was to predict a multiplier (future spend divided by past spend) and multiply it back. That fixed the giants (R² from about 0.5 to about 0.75) but only matched past spend, because R, F, M carry little extra information.",
+      "source": "steps_followed_2.md, model_tried_summary_2.md",
+      "table": "models"
+    },
+    {
+      "id": "features", "title": "Add features one at a time",
+      "did": "Tested seven candidate features individually against the multiplier model, with settings fixed so that re-tuning could not hide the effect.",
+      "why": "Re-tuning after every feature moves the score by about 0.02, more than one feature's effect. Fixed settings isolate the feature.",
+      "found": "The keep rule changed during this stage. Fold-split tests (the strict 9-of-10 rule and a t-test) overstated the evidence because the splits reuse the same customers, so the final rule E uses a bootstrap over customers and needs a practical size too. Only the purchase interval + overdue ratio pair was kept, and only provisionally: on fresh splits it gained +£4.0 MAE (interval -£2.4 to +£9.7), below the £5 bar. It stays in the headline model C by choice; the simpler model A (R, F, M only) is statistically the same.",
+      "source": "steps_followed_3.md, feature_adding_3.md",
+      "table": "features"
+    },
+    {
+      "id": "test", "title": "Score the final model once",
+      "did": "Fitted on the train period only and scored the later test period a single time. Reported model C, the simpler model A, past spend and the average, with bootstrap intervals over customers.",
+      "why": "Every choice before this used train cross-validation. The test period was never used to pick anything, so its score is the honest estimate.",
+      "found": "See Results. Model C is level with past spend for ranking and about 3% better in average error. Totals are under-predicted, and most of the squared error comes from the 10 biggest customers.",
+      "source": "steps_followed_3.md"
+    },
+    {
+      "id": "segments", "title": "Build the four segments",
+      "did": "A 2 x 2 grid: predicted spend (high or not) and probability of buying again (likely or not). The probability comes from a logistic regression on R, F, M.",
+      "why": "The cut-offs are business-sized and were fixed before looking at results: high value = the top 20% by predicted spend (£721 on train), likely = more than 50%. The logistic model ties XGBoost (AUC 0.778 vs 0.775) and is well calibrated, so the simplest model won. The earlier version of this project used K-Means, which turned out to split on just 'bought recently?', a rule a marketer can write by hand, so it was dropped.",
+      "found": "The segments are real and keep their order from train to test. Win back is nearly empty because valuable customers are almost always the ones likely to return. The top box is almost the same as a hand rule (top 20% by past spend who bought in the last 90 days).",
+      "source": "steps_followed_4.md, model_interpretation_4.md"
+    },
+    {
+      "id": "shap", "title": "Explain what drives predictions",
+      "did": "SHAP values on the multiplier part of the model.",
+      "why": "The trees only learn the multiplier, so that is where the model's own judgement lives.",
+      "found": "The prediction is 'about 0.37 x past spend', nudged by roughly 12% either way by the purchase interval, recency and overdue ratio. It ranks customers almost exactly like past spend (rank correlation 0.993). SHAP shows what the model uses, not what helps.",
+      "source": "steps_followed_4.md"
+    },
+    {
+      "id": "targeting", "title": "Simulate targeting",
+      "did": "Picked the top 20% of customers by each rule and looked at the real money they spent next.",
+      "why": "The earlier project called this an A/B test, but it had no treatment group, no cost and no causal effect. This version says what it measures: ranking, not campaign ROI.",
+      "found": "Model C's top 20% spend {{top_c}} each against {{avg}} for the average customer. Sorting by past spend gives {{top_p}}: the model does not beat it for targeting.",
+      "source": "steps_followed_4.md, business_decisions_5.md"
+    },
+    {
+      "id": "serve", "title": "Package it: model card, API, dashboard, site",
+      "did": "Saved the model, the classifier and a metrics file; wrote the model card; built a FastAPI service, a Streamlit dashboard that reads only saved files, and this website.",
+      "why": "Serving uses the same cleaning and feature code as training, so features cannot drift. Tests send raw invoice lines, including rows after the cutoff, and check that the API's predictions equal the offline model's.",
+      "found": "The API cannot see the future by construction, and every number on this page is read from files written by the export script.",
+      "source": "steps_followed_5_dashboard.md, MODEL_CARD.md"
+    }
+  ],
+  "features_table": [
+    ["Order size (AOV)", "Rejected", "R² -0.026, MAE £6.1 worse"],
+    ["Purchase interval + overdue ratio", "Kept (provisional, headline model C)", "MAE +£5.7 on the first check; +£4.0 [-2.4, +9.7] on fresh splits"],
+    ["Spend trend (share of spend in last 90 days)", "Rejected", "R² +0.010 [-0.015, +0.030]"],
+    ["Return rate", "Rejected", "MAE +£0.9 [-1.7, +4.3]"],
+    ["Tenure", "Rejected (nearest miss)", "R² +0.017 [-0.004, +0.044], MAE +£2.2 [-3.0, +9.0]"],
+    ["Number of products", "Rejected", "R² +0.001, MAE -£0.2"]
+  ],
+  "decisions": [
+    {
+      "id": "top20", "title": "Contact the 20% of customers with the highest predicted spend",
+      "evidence": "DATA",
+      "how": "Models fitted on the train period, applied to the test period. For each rule we took the top 20% and measured the money they really spent in the next 6 months, against the average customer (which is what a random 20% would give).",
+      "result": "Model C's top 20% spend {{top_c}} each against {{avg}} on average (+270%, 95% interval +248% to +290%) and hold {{share}} of all future money. The top 10% alone hold 61%.",
+      "limit": "Strong for 'these customers spend a lot'. It says nothing about whether contacting them changes anything: they spend anyway."
+    },
+    {
+      "id": "nogain", "title": "The model adds nothing over sorting by past spend for targeting",
+      "evidence": "DATA",
+      "how": "Same top-20% comparison, ranking by past spend instead of by the model.",
+      "result": "{{top_p}} against {{top_c}} for the model. The model's ranking is almost the same as past spend (rank correlation 0.993), and the test comparison found the same capture (0.740 vs 0.739). Ranking by recency alone is clearly worse (£2,858).",
+      "limit": "Strong, and consistent across the baseline, the test, SHAP and the targeting steps. Use the simple rule if explanation and maintenance matter most."
+    },
+    {
+      "id": "breakeven", "title": "A £20 contact pays for itself at about 0.6% uplift",
+      "evidence": "ARITHMETIC ON ASSUMPTIONS",
+      "how": "Cost per contact divided by the average spend of the targeted group: 20 / 3,543 for the top 20%, 20 / 958 for a random group (2.1%).",
+      "result": "Targeting big spenders makes each contact cheap to justify.",
+      "limit": "Weak. The £20 cost is an example, not a known figure, and no uplift was measured. Only a real test with a holdout group can say."
+    },
+    {
+      "id": "segments", "title": "Treat the four segments differently",
+      "evidence": "DATA for the groups, RULE OF THUMB for the actions",
+      "how": "The groups and their spend and return rates come from the train check and the single test check. The actions come from the segment labels.",
+      "result": "Protect (18% of customers, 72% of future money, 93% buy again): keep happy, avoid discounts. Grow (19%, 12%, 76%): upsell and cross-sell. Low priority (62%, 16%, 41%): do not spend effort. Win back: the model's box is tiny (25 customers); a better list is high past spend and no purchase in 90 days (156 test customers, £1,619 on average, 69% bought again).",
+      "limit": "The data shows the groups differ; it does not show that discounts are wasted on Protect or that upselling works on Grow. The Win back list was found by looking at the test table, so it is a lead to check on another period, not a confirmed result. The 90 days is arbitrary."
+    },
+    {
+      "id": "drivers", "title": "Past spend, then recency and purchase rhythm drive the predictions",
+      "evidence": "DATA",
+      "how": "SHAP on the multiplier, plus the rank correlation with past spend.",
+      "result": "The multiplier stays between 0.31 and 0.40. The purchase interval (33%), recency (31%) and overdue ratio (22%) account for 86% of the effect. There is no hidden insight beyond: big, recent, regular customers keep spending.",
+      "limit": "SHAP shows what the model uses, not what helps. The interval and overdue ratio could not be proven to improve accuracy."
+    },
+    {
+      "id": "cautions", "title": "Handle the giants separately, and re-check the 50% line",
+      "evidence": "DATA, with the named-account group as a recommendation",
+      "how": "The 10 biggest customers hold 18 to 21% of the target money. On test, the largest actual spend was £183,530 against a largest prediction of £95,530, and 83% of the squared error came from those 10 customers. 57% of test customers bought again against 48% on train.",
+      "result": "Treat the giants as a named-account group, not a model output. Re-check calibration in a new period before relying on 'probability above 50%'.",
+      "limit": "The probability levels shifted between periods; the ranking held."
+    }
+  ],
+  "not_done": [
+    "Repeat the evaluation on a third period, to see whether the ordering and the 3.7x hold again.",
+    "Run a real campaign test with a holdout group, to measure uplift.",
+    "Check the Win back list on another period before using it."
+  ]
+}

@@ -111,3 +111,13 @@ Build base path: VITE_BASE (default /clv-stepwise/), set to the repository name 
 Run:  cd site; PATH=/data/home/mitanshub/miniconda3/envs/ml_clv/bin:$PATH npm run dev
 
 Next: (5) Docker, requirements-api.txt, CI and Pages workflow.
+
+---
+
+## STEP 17e done: two new site sections, "Flow of the application" and "Business decisions"   [site/src/Story.tsx, site/public/data/story.json, scripts/make_site_images.py]
+Requested by the user. Written from steps_followed_1 to 5, baseline_metrics_1, model_tried_summary_2, feature_adding_3, model_interpretation_4 and business_decisions_5.
+- Flow: a 13-stage diagram (new figure flow.png) and one card per stage (what we did, why, what we found, which notes file), including the dead ends: gross spend vs netting, models that only matched past spend, the keep rule that changed from fold-split tests to a bootstrap over customers. The model-comparison table and the feature verdict table are shown inside their stages.
+- Business decisions: six cards, each with how the conclusion was reached, the result and how far to trust it, tagged DATA, RULE OF THUMB or ARITHMETIC ON ASSUMPTIONS exactly as in business_decisions_5.md, plus "what would strengthen these conclusions".
+- Numbers: the targeting figures are filled from summary.json via placeholders; the rest of the narrative numbers are copied by hand from the notes into story.json (that file says so). If the notes change, story.json has to be edited.
+- Step 13 and the BG/NBD baseline are not mentioned, per earlier decisions.
+Check: tsc type-check and vite build pass. Not yet looked at in a browser.
