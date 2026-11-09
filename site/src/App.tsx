@@ -69,6 +69,7 @@ export default function App() {
 
         <section id="dataset">
           <h2>Dataset</h2>
+          <p className="takeaway">{s.raw_rows.toLocaleString("en-GB")} invoice lines from {s.raw_customers.toLocaleString("en-GB")} customers, cleaned and netted of returns before any modelling.</p>
           <p>UCI Online Retail II: {s.raw_rows.toLocaleString("en-GB")} invoice lines, {s.raw_customers.toLocaleString("en-GB")} customers, {s.raw_first_date.slice(0, 10)} to {s.raw_last_date.slice(0, 10)}. Rows without a customer ID (23%) are dropped; cancellations become returns.</p>
           <h3>Raw columns</h3>
           <div className="scroll"><table><thead><tr><th>Column</th><th>Meaning</th><th>Example</th></tr></thead>
@@ -79,16 +80,18 @@ export default function App() {
             <tbody>{d.raw.rows.slice(0, 6).map((r, i) => <tr key={i}>{r.map((v, j) => <td key={j}>{String(v)}</td>)}</tr>)}</tbody></table></div>
           <h3>Features the model uses</h3>
           <div className="scroll"><table><thead><tr><th>Feature</th><th>Meaning</th><th>Typical (5th / median / 95th)</th></tr></thead>
-            <tbody>{d.features.schema.map((r) => <tr key={r.column}><td>{r.column}</td><td>{r.meaning}</td><td>{r.p5} / {r.median} / {r.p95}</td></tr>)}</tbody></table></div>
+            <tbody>{d.features.schema.map((r) => <tr key={r.column}><td>{r.column}</td><td>{r.meaning}</td><td>{[r.p5, r.median, r.p95].map((v) => (v == null ? "–" : v.toLocaleString("en-GB", { maximumFractionDigits: 2 }))).join(" / ")}</td></tr>)}</tbody></table></div>
         </section>
 
         <section id="flow">
           <h2>Flow of the application</h2>
+          <p className="takeaway">Thirteen stages, dead ends included: where the plan changed, and why.</p>
           <Flow story={story} s={s} />
         </section>
 
         <section id="architecture">
           <h2>Architecture</h2>
+          <p className="takeaway">One pipeline for training and serving, so the features cannot drift apart.</p>
           <Fig src="pipeline.png" alt="Pipeline: raw invoices, clean, ledger, snapshot, features, model C" caption="Every step uses the same code in training and in the API, so features cannot drift." />
           <Fig src="snapshot_timeline.png" alt="Train and test snapshots as bars on a timeline" caption={`Features come only from before the cutoff. Train cutoff ${s.cutoff_train}, test cutoff ${s.cutoff_test}; the test target period is entirely later than anything the model saw.`} />
           <p><strong>Model C.</strong> prediction = multiplier × the customer's past spend (at least £50). The multiplier comes from a small boosted-tree model on recency, frequency, monetary, purchase interval and overdue ratio.</p>
@@ -97,6 +100,7 @@ export default function App() {
 
         <section id="results">
           <h2>Results</h2>
+          <p className="takeaway">Model C ties the simple past-spend rule on ranking and is about {pct(diff["MAE gain"].point / P.MAE.value)} better on average error.</p>
           <p>Test period, {s.n_test.toLocaleString("en-GB")} customers ({pct(s.zero_share_test)} spent nothing). Intervals are 95% bootstraps over customers.</p>
           <div className="scroll"><table><thead><tr><th>Model</th><th>R²</th><th>MAE</th><th>Capture of money, top 20%</th></tr></thead><tbody>
             <tr><td>Sort by past spend</td><td>{ci(P.R2, (x) => num(x))}</td><td>{ci(P.MAE, gbp)}</td><td>{ci(P["Capture@20%"], (x) => num(x))}</td></tr>
@@ -123,17 +127,19 @@ export default function App() {
 
         <section id="heuristics">
           <h2>No ML: heuristic CLV</h2>
+          <p className="takeaway">Two textbook formulas, scored on the same test period as the model.</p>
           <HeuristicsSection h={heur} />
         </section>
 
         <section id="decisions">
           <h2>Business decisions</h2>
+          <p className="takeaway">Six conclusions, each tagged with how strong its evidence is.</p>
           <Decisions story={story} s={s} />
         </section>
 
         <section id="try">
           <h2>Try it</h2>
-          <p>Pick an example customer or type your own numbers.</p>
+          <p className="takeaway">Pick an example customer, or type your own numbers.</p>
           <Scorer presets={sc.presets} />
         </section>
       </main>

@@ -1,10 +1,10 @@
 /* Editorial look: warm paper, serif headings, one blue accent, one orange highlight, lots of white space. */
 :root{
-  --bg:#faf8f4;--card:#ffffff;--ink:#1b1a17;--mut:#5d5b55;--line:#e4e0d7;--acc:#1f4fa3;--accd:#1f4fa3;--soft:#f0ece3;--warn:#b4491f;--hi:#d9531e;--hit:#b8430f;
+  --bg:#faf8f4;--card:#ffffff;--ink:#1b1a17;--mut:#5d5b55;--line:#e4e0d7;--acc:#1f4fa3;--accd:#1f4fa3;--soft:#f0ece3;--band:#f2eee5;--warn:#b4491f;--hi:#d9531e;--hit:#b8430f;
   --serif:"Source Serif 4 Variable","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
   --sans:"Inter Variable",Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
-@media (prefers-color-scheme:dark){:root{--bg:#16150f;--card:#1f1e18;--ink:#f1eee6;--mut:#bdb9ac;--line:#37342b;--acc:#7fa8ee;--accd:#3f6fc9;--soft:#25231b;--warn:#ee9166;--hi:#f08a5d;--hit:#f08a5d}}
+@media (prefers-color-scheme:dark){:root{--bg:#16150f;--card:#1f1e18;--ink:#f1eee6;--mut:#bdb9ac;--line:#37342b;--acc:#7fa8ee;--accd:#3f6fc9;--soft:#25231b;--band:#1b1a14;--warn:#ee9166;--hi:#f08a5d;--hit:#f08a5d}}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:70px}
 body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
@@ -50,6 +50,12 @@ figcaption{color:var(--mut);font-size:.85rem;margin-top:8px;max-width:720px}
 
 .skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:var(--bg);padding:6px;z-index:9}
 .src{color:var(--mut);font-size:.8rem;margin:8px 0 0}.warn{color:var(--warn)}
+
+/* Alternating full-width bands; the content stays in the centred column */
+main>section:nth-child(even){background:var(--band);box-shadow:0 0 0 100vmax var(--band);clip-path:inset(0 -100vmax);border-top:0}
+main>section:nth-child(even)+section{border-top:0}
+.takeaway{font:italic 400 1.2rem/1.5 var(--serif);color:var(--mut);margin:-8px 0 26px;max-width:34em}
+.scroll{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 16px}
 
 /* Hero */
 section.hero{position:relative;overflow:hidden;margin:28px 0 8px;padding:40px 44px 28px;border:1px solid var(--line);border-radius:16px;

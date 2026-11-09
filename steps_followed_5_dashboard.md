@@ -155,3 +155,11 @@ Palette: tokens kept (paper #faf8f4, ink #1b1a17, blue #1f4fa3, orange #d9531e, 
 Figures regenerated with the same blue, orange, ink and grey (they were slightly different before). The categorical palette validator from the data-viz skill was NOT run on the figure colours (blue, orange, green, grey); the model-comparison and curve figures also rely on labels, line styles and direct values, not colour alone.
 Figures still use matplotlib's default font, so their type does not match the page; changing that needs the font files for matplotlib (not done).
 Nav tightened so the eight links fit on one row beside the brand at desktop width.
+
+---
+
+## STEP 18d done: layout, alternating bands and takeaways   [site/src/App.tsx, site/src/styles.css]
+Design item 4. Every second section (Dataset, Architecture, Heuristics, Try it) sits on a full-width tinted band while its content stays in the centred column; tables are white cards with a thin border and rounded corners; each section heading now has a one-line serif-italic takeaway under it (dataset size, thirteen stages, one pipeline for training and serving, the Results verdict, heuristics, decisions, try it). The Results takeaway and the dataset one are computed from summary.json (3% MAE gain, row and customer counts).
+Fixed while checking: the feature table showed raw floats (0.08823529411764706, 6024.5275); now rounded to at most two decimals.
+Checked by screenshots in headless Chromium (light, full page, and dark for the heuristics section). Not checked: phone width for the bands, Flow, Architecture, Try it in dark.
+Not done from the original item 4: segment cards (item 6), a mobile menu.
