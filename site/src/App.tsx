@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Header from "./Nav";
 import Scorer from "./Scorer";
 import { SegmentCards } from "./Segments";
 import { HeroArt, IconError, IconFit, IconTop } from "./Icons";
@@ -6,7 +7,7 @@ import { Decisions, Flow, HeuristicsSection } from "./Story";
 import { gbp, img, loadJson, num, pct } from "./lib";
 import type { Dataset, Heuristics, Interval, ScorerData, Story, Summary } from "./types";
 
-const SECTIONS = [["about", "About"], ["dataset", "Dataset"], ["flow", "Flow"], ["architecture", "Architecture"], ["results", "Results"], ["heuristics", "No-ML heuristics"], ["decisions", "Business decisions"], ["try", "Try it"]];
+const SECTIONS: readonly (readonly [string, string])[] = [["about", "About"], ["dataset", "Dataset"], ["flow", "Flow"], ["architecture", "Architecture"], ["results", "Results"], ["heuristics", "No-ML heuristics"], ["decisions", "Business decisions"], ["try", "Try it"]];
 
 const ci = (m: Interval, f: (x: number) => string) => `${f(m.value)} [${f(m.ci95[0])}, ${f(m.ci95[1])}]`;
 
@@ -42,12 +43,7 @@ export default function App() {
   return (
     <>
       <a className="skip" href="#about">Skip to content</a>
-      <header>
-        <strong>Customer spend forecast</strong>
-        <nav aria-label="Sections">
-          {SECTIONS.map(([id, l]) => <a key={id} href={`#${id}`} className={active === id ? "cur" : ""} aria-current={active === id ? "true" : undefined}>{l}</a>)}
-        </nav>
-      </header>
+      <Header sections={SECTIONS} active={active} />
       <main>
         <section id="about" className="hero">
           <HeroArt />

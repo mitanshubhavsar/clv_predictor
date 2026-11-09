@@ -173,3 +173,10 @@ Design item 6.
 - Model C row in the Results table is tinted. The mean-baseline R2 now shows 0.00 instead of -0.00.
 Checked by screenshots in headless Chromium (light and dark for the cards, phone width for the cards, one flow stage). Not checked: the whole Flow section on a phone.
 Remaining ideas from the original list, not started: icons elsewhere, scroll-in animation, footer links to the model card and API docs, interactive charts, Google-style polish of the figures' font.
+
+---
+
+## STEP 18f done: navigation styling   [site/src/Nav.tsx, App.tsx, styles.css]
+Design item 5. New Header component: logo mark (small rounded square with a rising line, inline SVG) beside the brand, which links to the top; sticky blurred bar; the current section is underlined in orange; a thin reading-progress bar along the bottom edge of the header (orange, grows with scroll, exposed to assistive tech as a progressbar); on screens up to 760px the links collapse into a hamburger menu (button with aria-expanded and aria-controls, three lines that turn into a cross, a dropdown list with the current section marked by an orange bar, closes when a link is chosen or Escape is pressed). The skip link is kept.
+Checked in headless Chromium: at 45% scroll the progress reads 46 and the current section is Flow; at phone width the menu is hidden, opens on tap (aria-expanded true), and closes after choosing Results, which scrolls to it; no page errors. Screenshots of desktop and the open phone menu looked right. Not checked: dark mode of the menu, keyboard tab order.
+The page is about 20,000 px tall on desktop (Flow and Results are long); a "back to top" button or collapsing the Flow stages would help later.
