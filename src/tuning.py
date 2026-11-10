@@ -9,22 +9,26 @@ computed once on all 4,242 train customers. Same folds for every trial and
 every model (KFold seed 42, defined in step6_baselines.cv_predictions), so
 differences between models are not fold luck.
 """
-import optuna
+# optuna is imported inside tune(), not here: the serving image imports the model classes (which import
+# this module) and must not need optuna, which only training uses.
+from __future__ import annotations
+
 import pandas as pd
 
 from metrics import r2
 from step6_baselines import cv_predictions
 
-optuna.logging.set_verbosity(optuna.logging.WARNING)
-
 
 def tune(make_model, suggest, X: pd.DataFrame, y: pd.Series,
-         n_trials: int = 30, seed: int = 42) -> optuna.Study:
+         n_trials: int = 30, seed: int = 42):
     """make_model(**params) -> unfitted model with fit/predict.
-    suggest(trial) -> dict of params for that trial."""
+    suggest(trial) -> dict of params for that trial. Returns the optuna Study."""
+    import optuna
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
     y_arr = y.to_numpy()
 
-    def objective(trial: optuna.Trial) -> float:
+    def objective(trial) -> float:
         params = suggest(trial)
         oof = cv_predictions(lambda: make_model(**params), X, y)
         return r2(y_arr, oof)

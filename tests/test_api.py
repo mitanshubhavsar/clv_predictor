@@ -13,7 +13,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "src"))
 
 from serving.app import app  # noqa: E402
 from step3_split import TEST_CUTOFF, load_ledger, make_snapshot  # noqa: E402
@@ -69,7 +70,8 @@ def test_transactions_match_offline_and_ignore_future_rows(client, offline):
     raw = pd.read_csv(ROOT / "data" / "raw.csv")
     sub = raw[raw["Customer ID"].isin(ids)]  # all their rows, INCLUDING those after the cutoff, on purpose
     assert len(sub) < 50_000
-    buf = io.BytesIO(); sub.to_csv(buf, index=False)
+    buf = io.BytesIO()
+    sub.to_csv(buf, index=False)
     assert len(buf.getvalue()) < 5 * 1024 * 1024
     r = client.post("/score/transactions", params={"cutoff": str(TEST_CUTOFF.date())},
                     files={"file": ("tx.csv", buf.getvalue(), "text/csv")})

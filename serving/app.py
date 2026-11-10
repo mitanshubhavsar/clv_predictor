@@ -15,10 +15,10 @@ Run from the project root:   uvicorn serving.app:app --port 8000
 """
 import io
 import json
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
 
 import joblib
 import numpy as np
@@ -34,7 +34,6 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from step2_clean import build_ledger, clean  # noqa: E402
 from step3_split import make_snapshot  # noqa: E402
-from step7e_ratio import FLOOR  # noqa: E402
 from step8_features import build_features  # noqa: E402
 
 OUT = ROOT / "outputs"
@@ -65,15 +64,19 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="CLV scoring API (model C)", version="0.1.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8501"],
-                   allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
+# Browsers allowed to call the API: local dev servers, plus the published site. The GitHub Pages origin is only the
+# scheme and host (no repository path). Extra origins can be added without a code change: CORS_ORIGINS="https://a,https://b".
+CORS_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8501",
+                "https://mitanshubhavsar.github.io"]
+CORS_ORIGINS += [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
 
 class CustomerFeatures(BaseModel):
     Recency: float = Field(ge=0, description="days from the last purchase to the scoring date")
     Frequency: int = Field(gt=0, description="distinct purchase invoices in the last 12 months")
     Monetary: float = Field(description="net spend (purchases minus returns) in the last 12 months, GBP")
-    IPI: Optional[float] = Field(default=None, ge=0, description="mean days between purchase days; omit if the customer bought on only one day")
+    IPI: float | None = Field(default=None, ge=0, description="mean days between purchase days; omit if the customer bought on only one day")
 
 
 def score_frame(X: pd.DataFrame) -> pd.DataFrame:
@@ -185,7 +188,7 @@ def score(f: CustomerFeatures) -> dict:
 
 @app.post("/score/transactions")
 async def score_transactions(request: Request, file: UploadFile = File(...),
-                             cutoff: Optional[str] = Query(None, description="scoring date, YYYY-MM-DD; default = day after the last invoice in the file")) -> dict:
+                             cutoff: str | None = Query(None, description="scoring date, YYYY-MM-DD; default = day after the last invoice in the file")) -> dict:
     if file.content_type not in ("text/csv", "application/vnd.ms-excel", "application/octet-stream"):
         raise HTTPException(400, f"Expected a CSV file, got content-type {file.content_type!r}.")
     body = await file.read(MAX_UPLOAD_BYTES + 1)

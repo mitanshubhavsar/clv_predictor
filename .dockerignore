@@ -1,0 +1,16 @@
+data/
+notebooks/
+site/
+dashboard/
+scripts/
+tests/
+.git/
+.github/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+*.md
+outputs/test_predictions.csv
+outputs/model_comparison.csv
+outputs/shap_importance.csv

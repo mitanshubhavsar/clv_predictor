@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # One job on purpose: the docker build and smoke test use the same checkout as the tests,
+  # so no artifact hand-off is needed.
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements-dev.txt
+      - name: Lint the code that ships (API and tests)
+        run: ruff check serving tests
+      - name: Unit tests
+        # The tests compare the API with the offline model on real customers, so they use data/ledger.csv.
+        run: pytest -q
+      - name: Verify requirements-api.txt is self-sufficient
+        # Installs ONLY requirements-api.txt into a throwaway venv and imports serving.app. This catches a
+        # missing package (for example python-multipart, or optuna imported by training code) in seconds,
+        # instead of after a Docker build and a container crash.
+        run: |
+          python -m venv /tmp/api-venv
+          /tmp/api-venv/bin/pip install -q -r requirements-api.txt
+          PYTHONPATH=. /tmp/api-venv/bin/python -c "import serving.app; print('serving.app imports cleanly from requirements-api.txt alone')"
+      - name: Build serving image
+        run: docker build -f serving/Dockerfile -t clv-api:ci .
+      - name: Smoke test API
+        run: |
+          docker run -d --name api -p 8000:8000 clv-api:ci
+
+          # Show container state and logs before anything that can end the script early.
+          ready=0
+          for i in $(seq 1 40); do
+            if curl -fs localhost:8000/health | grep -q '"ok"'; then ready=1; break; fi
+            sleep 3
+          done
+          echo "::group::docker ps -a"
+          docker ps -a
+          echo "::endgroup::"
+          echo "::group::docker logs api"
+          docker logs api
+          echo "::endgroup::"
+          if [ "$ready" != "1" ]; then
+            echo "API never reported healthy within 120s."
+            exit 1
+          fi
+
+          curl -fs localhost:8000/model-info > /dev/null
+          curl -fs -X POST localhost:8000/score -H "Content-Type: application/json" \
+            -d '{"Recency": 20, "Frequency": 6, "Monetary": 2500, "IPI": 45}' \
+            | python3 -c "import json,sys; r=json.load(sys.stdin); assert abs(r['predicted_spend_gbp'] - 970.35) < 0.5, r; assert r['segment'] == 'Protect', r; print(r)"
