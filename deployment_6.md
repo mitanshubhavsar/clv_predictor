@@ -10,7 +10,19 @@ Repository: https://github.com/mitanshubhavsar/clv_predictor
 Site (after deployment): https://mitanshubhavsar.github.io/clv_predictor/  
 API (after deployment): https://<your-render-service>.onrender.com/docs
 
-## 1. What was prepared in the repository (done, nothing pushed yet)
+## What we did, in short (the steps that worked)
+
+1. **Packed the project for the internet.** Added a Dockerfile (the recipe for the API's container), a short package list for it (`requirements-api.txt`), and two GitHub workflows: `ci.yml` (tests and checks on every push) and `pages.yml` (builds and publishes the website).
+2. **Fixed one real bug before it hurt.** A training-only library (optuna) was imported at the top of one file, which would have crashed the API container on start. It is now imported only when training.
+3. **Pushed to GitHub** (`git push origin main`). The `ci` job built the Docker image for the first time and tested it.
+4. **Turned on GitHub Pages.** The first `pages` run built the site but failed to publish with "404, ensure GitHub Pages has been enabled". Fix: repository **Settings -> Pages -> Source: GitHub Actions**, then **Re-run failed jobs**. The site went live.
+5. **Created the API on Render.** New Web Service from the repository, runtime Docker, Dockerfile path `serving/Dockerfile`, build context `.`, free instance, and **Health Check Path `/health`** (found under **Advanced** on the create form). No environment variables are needed.
+6. **Connected the site to the API.** Repository **Settings -> Secrets and variables -> Actions -> Variables**: added `VITE_API_URL` = the Render address (no trailing slash), then ran **Actions -> pages -> Run workflow**, because the address is baked into the site when it is built.
+7. **Tested the scorer** on the live site: "Try it" shows "waking up", then "Live API online". The free API sleeps when idle, so the first request after a quiet period takes about a minute.
+
+Links: website https://mitanshubhavsar.github.io/clv_predictor/ (also at the top of `README.md`). The API address is the one shown in the Render dashboard.
+
+## 1. What was prepared in the repository (done)
 
 | File | What it is for |
 |---|---|
