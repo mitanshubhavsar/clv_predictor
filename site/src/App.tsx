@@ -5,7 +5,7 @@ import { SegmentCards } from "./Segments";
 import { HeroArt, IconError, IconFit, IconTop } from "./Icons";
 import { Decisions, Flow, HeuristicsSection } from "./Story";
 import { gbp, img, loadJson, num, pct } from "./lib";
-import type { Dataset, Heuristics, Interval, ScorerData, Story, Summary } from "./types";
+import type { Dataset, Heuristics, Interval, ScorerData, Story, Summary, TargetingRules, TrainExamples } from "./types";
 
 const SECTIONS: readonly (readonly [string, string])[] = [["about", "About"], ["dataset", "Dataset"], ["flow", "Flow"], ["architecture", "Architecture"], ["results", "Results"], ["heuristics", "No-ML heuristics"], ["decisions", "Business decisions"], ["try", "Try it"]];
 
@@ -21,12 +21,14 @@ export default function App() {
   const [sc, setSc] = useState<ScorerData | null>(null);
   const [story, setStory] = useState<Story | null>(null);
   const [heur, setHeur] = useState<Heuristics | null>(null);
+  const [train, setTrain] = useState<TrainExamples | null>(null);
+  const [rules, setRules] = useState<TargetingRules | null>(null);
   const [err, setErr] = useState("");
   const [active, setActive] = useState("about");
 
   useEffect(() => {
-    Promise.all([loadJson<Summary>("summary"), loadJson<Dataset>("dataset"), loadJson<ScorerData>("scorer"), loadJson<Story>("story"), loadJson<Heuristics>("heuristics")])
-      .then(([a, b, c, e, f]) => { setS(a); setD(b); setSc(c); setStory(e); setHeur(f); })
+    Promise.all([loadJson<Summary>("summary"), loadJson<Dataset>("dataset"), loadJson<ScorerData>("scorer"), loadJson<Story>("story"), loadJson<Heuristics>("heuristics"), loadJson<TrainExamples>("train_examples"), loadJson<TargetingRules>("targeting_rules")])
+      .then(([a, b, c, e, f, g, h]) => { setS(a); setD(b); setSc(c); setStory(e); setHeur(f); setTrain(g); setRules(h); })
       .catch((e: Error) => setErr(e.message));
   }, []);
 
@@ -37,7 +39,7 @@ export default function App() {
   }, [s]);
 
   if (err) return <main><p className="warn">Could not load the saved results: {err}</p></main>;
-  if (!s || !d || !sc || !story || !heur) return <main><p>Loading…</p></main>;
+  if (!s || !d || !sc || !story || !heur || !train || !rules) return <main><p>Loading…</p></main>;
   const C = s.test.model_C_headline, P = s.test.past_spend, diff = s.diff_vs_past_spend;
 
   return (
@@ -61,7 +63,7 @@ export default function App() {
             <div className="tile"><span className="ico"><IconError /></span><b>{gbp(C.MAE.value)}</b><span>average error per customer</span></div>
             <div className="tile"><span className="ico"><IconTop /></span><b>{pct(C["Capture@20%"].value)}</b><span>of future money held by the model's top 20%</span></div>
           </div>
-          <p className="callout"><strong>The honest summary.</strong> A plain rule, "sort by past spend", is almost as good. The model is about {gbp(diff["MAE gain"].point)} ({pct(diff["MAE gain"].point / P.MAE.value)}) more accurate per customer, and identical for ranking. Use it to size and prioritise customers, not as a big upgrade. It is not causal and says nothing about margin.</p>
+          <p className="callout"><strong>The honest summary.</strong> A plain rule, "sort by past spend", is almost as good. The model is about {gbp(diff["MAE gain"].point)} ({pct(diff["MAE gain"].point / P.MAE.value)}) more accurate per customer, and identical for ranking. Use it to size and prioritise customers. It says nothing about margin.</p>
         </section>
 
         <section id="dataset">
@@ -82,8 +84,8 @@ export default function App() {
 
         <section id="flow">
           <h2>Flow of the application</h2>
-          <p className="takeaway">Thirteen stages, dead ends included: where the plan changed, and why.</p>
-          <Flow story={story} s={s} />
+          <p className="takeaway">Thirteen stages, we included: where the plan changed, and why.</p>
+          <Flow story={story} s={s} train={train} rules={rules} />
         </section>
 
         <section id="architecture">

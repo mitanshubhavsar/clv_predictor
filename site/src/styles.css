@@ -114,6 +114,11 @@ dd.found{background:var(--soft);border-left:3px solid var(--acc);padding:8px 12p
 .turn{display:inline-block;margin-left:10px;vertical-align:middle;font:600 .66rem var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--hit);border:1px solid var(--hit);border-radius:999px;padding:2px 9px}
 .stages>li{background:var(--card);border:1px solid var(--line);border-left:2px solid var(--line);border-radius:8px;padding:16px 20px 12px 28px}
 
+.aside{margin:14px 0 4px;padding:12px 16px;background:var(--card);border:1px dashed var(--acc);border-radius:8px}
+.aside h4{margin:0 0 8px;font:700 1rem var(--serif)}.aside p{margin:8px 0 0;font-size:.92rem}
+.aside h5{margin:14px 0 4px;font:600 .72rem var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--hit)}.aside ul{margin:0;padding-left:1.1em;font-size:.92rem}.aside li{margin:4px 0}
+.aside pre{margin:0;padding:8px 10px;background:var(--soft);border-radius:6px;white-space:pre-wrap;word-break:break-word;font:.82rem/1.5 ui-monospace,monospace}
+
 /* Decisions */
 .decision{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--acc);border-radius:6px;padding:6px 22px 18px;margin:20px 0;max-width:720px}
 .decision h3{margin:14px 0 8px}

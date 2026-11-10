@@ -1,0 +1,49 @@
+{
+ "n_test": 4326,
+ "n_top": 865,
+ "average_customer": 958.010996301433,
+ "rows": [
+  {
+   "rule": "Model C",
+   "ranks_by": "predicted 6-month spend",
+   "mean_future_spend": 3543.213456647399,
+   "lift_vs_average": 2.6985102157768406,
+   "share_of_money": 0.739531053316451
+  },
+  {
+   "rule": "Past spend",
+   "ranks_by": "past net spend, no model",
+   "mean_future_spend": 3539.4475838150292,
+   "lift_vs_average": 2.6945792871686005,
+   "share_of_money": 0.7387450493298288
+  },
+  {
+   "rule": "Model C x probability of returning",
+   "ranks_by": "predicted spend multiplied by the chance of buying again",
+   "mean_future_spend": 3500.868867052023,
+   "lift_vs_average": 2.654309690147328,
+   "share_of_money": 0.7306929916730095
+  },
+  {
+   "rule": "Recency only",
+   "ranks_by": "most recent buyers first",
+   "mean_future_spend": 2857.564554913295,
+   "lift_vs_average": 1.9828097651753653,
+   "share_of_money": 0.5964240515202707
+  },
+  {
+   "rule": "Perfect ranking (ceiling)",
+   "ranks_by": "the real future spend, which nobody knows in advance",
+   "mean_future_spend": 3987.676797687861,
+   "lift_vs_average": 3.1624540982128346,
+   "share_of_money": 0.8322983807106108
+  },
+  {
+   "rule": "Random 20% (floor)",
+   "ranks_by": "no ranking: the average customer",
+   "mean_future_spend": 958.010996301433,
+   "lift_vs_average": 0.0,
+   "share_of_money": 0.2
+  }
+ ]
+}

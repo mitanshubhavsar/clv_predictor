@@ -12,7 +12,7 @@
       "id": "clean", "title": "Clean, and net the returns",
       "did": "Dropped rows with no customer ID and non-positive prices. Moved cancelled invoices into a separate returns table. Removed internal codes (manual entries, test rows, bank charges) but kept postage.",
       "why": "Gross spend would call a customer who ordered £168,472 and cancelled almost all of it the 8th biggest customer. Netting returns off removes the problem at its source, with no arbitrary clipping. Postage is real money the customer pays; internal codes say nothing about behaviour.",
-      "found": "Net spend is only about 4% below gross overall, but that customer drops from £168,472 to £3. Row counts add up exactly (the script asserts it).",
+      "found": "Net spend is only about 4% below gross overall, but that customer drops from £168,472 to £3.",
       "source": "steps_followed_1.md"
     },
     {
@@ -41,19 +41,35 @@
       "did": "Before any machine learning, tried two rules: predict the average for everyone, and predict 0.37 x past spend.",
       "why": "A model is only worth building if it beats the simple rule that a spreadsheet can do.",
       "found": "Past spend is a strong rule: R² 0.75 in cross-validation and 0.71 on the test period, and it already captures 74% of future money in its top 20%. Everything after this has to beat that by more than the noise.",
-      "source": "steps_followed_2.md, baseline_metrics_1.md"
+      "source": "steps_followed_2.md, baseline_metrics_1.md",
+      "aside": {
+        "title": "Where does 0.37 come from?",
+        "code": "self.k_ = float(y.sum() / m.sum())   # k = total future spend / total past spend",
+        "text": "It is measured, not chosen. Across all training customers, the money they spent in the 6-month target period (Dec 2010 to May 2011) was 37% of the money they had spent in the 12 months before (Dec 2009 to Nov 2010). That gives 0.370. It is below 0.5 (half the time) because about half of the customers bought nothing in the next 6 months. It is only right for the training period: on the test period the same ratio was 0.51, which is why anything fitted on train under-predicts the test total (see the No-ML section)."
+      }
     },
     {
       "id": "models", "title": "Try models, one at a time",
-      "did": "Tried a log-scale Ridge, XGBoost on raw pounds, XGBoost with the Tweedie loss, and a two-stage 'hurdle' model, each tuned with 250 Optuna trials on train cross-validation only.",
+      "did": "Tried a log-scale Ridge, XGBoost on raw pounds, XGBoost with the Tweedie loss, and a two-stage 'hurdle' model, each tuned with 250 Optuna trials on train cross-validation only. Measures: R², MAE (average error in £) and Capture@20% (share of future money held by the top 20% ranked by the model). Choosing the winner: by R², with MAE as the tie-break. Test was only used once, at the end.",
       "why": "Each addresses a known feature of the target: skew, zeros, or both. Tuning scores run optimistic, so every winner was re-checked on fresh fold splits.",
-      "found": "None beat past spend. Tree models cannot predict the giants: they answer with a bucket average, so a customer with £318,751 of past spend got a prediction of about £32,000 when the rule gives £120,000. The fix was to predict a multiplier (future spend divided by past spend) and multiply it back. That fixed the giants (R² from about 0.5 to about 0.75) but only matched past spend, because R, F, M carry little extra information.",
+      "found": "Tried 5 Stastical models. Tree models cannot predict the giants: they answer with a bucket average, so a customer with £318,751 of past spend got a prediction of about £32,000 when the rule gives £120,000. The fix was to predict a multiplier (future spend divided by past spend) and multiply it back. That fixed the giants (R² from about 0.5 to about 0.75) but only matched past spend, because R, F, M carry little extra information.",
       "source": "steps_followed_2.md, model_tried_summary_2.md",
-      "table": "models"
+      "table": "models",
+      "aside": {
+        "title": "Does the multiplier use the future?",
+        "code": "prediction = multiplier(past features) x past spend",
+        "text": "No. In training the model is shown the answers: for every training customer the future period has already happened, so we know what they spent. The label is future spend divided by past spend, and the model learns to guess it from past behaviour only. When it predicts, it gets only past features (recency, frequency, past spend and so on), outputs a multiplier, and multiplies it by the customer's own past spend. No future number is used. It would be leakage only if the real future spend of the customer being predicted, or anything dated after the cutoff, went into the prediction. It does not, and the API test checks it: raw invoice lines that include rows after the cutoff still give exactly the offline predictions.",
+        "example_title": "Example: two customers with the same past spend",
+        "example": [
+          "Customer A: bought 20 days ago, 6 purchases, past spend £2,500, usually buys every 45 days. The model gives a multiplier of 0.388, so the prediction is 0.388 x £2,500 = about £970.",
+          "Customer B: the same, but last bought 200 days ago, so well overdue. The multiplier drops to 0.300, so the prediction is 0.300 x £2,500 = about £751.",
+          "Same past spend, different multiplier: the multiplier reacts to how recent and regular the customer is, and past spend sets the size."
+        ]
+      }
     },
     {
       "id": "features", "title": "Add features one at a time",
-      "did": "Tested seven candidate features individually against the multiplier model, with settings fixed so that re-tuning could not hide the effect.",
+      "did": "Tested seven candidate features individually against the multiplier model, with settings fixed so that re-tuning could not hide the effect. A feature was kept only if it passed all three conditions of the keep rule. A real gain: R² or MAE is significantly better, meaning the 95% interval for the gain excludes zero. No real loss: neither R² nor MAE is significantly worse. A practical size: the MAE gain is at least £5, or the R² gain is at least +0.005.",
       "why": "Re-tuning after every feature moves the score by about 0.02, more than one feature's effect. Fixed settings isolate the feature.",
       "found": "The keep rule changed during this stage. Fold-split tests (the strict 9-of-10 rule and a t-test) overstated the evidence because the splits reuse the same customers, so the final rule E uses a bootstrap over customers and needs a practical size too. Only the purchase interval + overdue ratio pair was kept, and only provisionally: on fresh splits it gained +£4.0 MAE (interval -£2.4 to +£9.7), below the £5 bar. It stays in the headline model C by choice; the simpler model A (R, F, M only) is statistically the same.",
       "source": "steps_followed_3.md, feature_adding_3.md",
@@ -64,14 +80,39 @@
       "did": "Fitted on the train period only and scored the later test period a single time. Reported model C, the simpler model A, past spend and the average, with bootstrap intervals over customers.",
       "why": "Every choice before this used train cross-validation. The test period was never used to pick anything, so its score is the honest estimate.",
       "found": "See Results. Model C is level with past spend for ranking and about 3% better in average error. Totals are under-predicted, and most of the squared error comes from the 10 biggest customers.",
-      "source": "steps_followed_3.md"
+      "source": "steps_followed_3.md",
+      "aside": {
+        "title": "What is a bootstrap interval?",
+        "code": "R2 0.716 [0.594, 0.782]   <- the score, then the range it could plausibly move in",
+        "text": "The test period gives one score from one set of customers. With a different set of customers it would come out a little different, and a few giant customers can move it a lot. A bootstrap interval shows how much. Draw customers at random from the test set, with replacement (the same customer can appear twice, another not at all), until you have as many as before. Score that new set. Repeat 500 times. Sort the 500 scores and drop the lowest 2.5% and the highest 2.5%. What is left is the 95% interval. A narrow interval means the score is steady; a wide one means it depends on who happens to be in the sample.",
+        "example_title": "Tiny example: average error (MAE) for six customers",
+        "example": [
+          "The model's error for each customer is £10, £20, £30, £40, £50 and £500 (one giant). The average error is £108.",
+          "Draw six customers at random with replacement. First draw: £50, £10, £20, £20, £20, £50, average error £28. Second draw: £500, £40, £10, £10, £20, £30, average £102. Third draw: £40, £30, £20, £10, £50, £50, average £33.",
+          "After 500 draws the middle 95% of the averages runs from about £23 to about £267. The range is wide because the draws that include the giant £500 customer give a much higher average than the draws that miss them.",
+          "Real test: R² 0.716 [0.594, 0.782] is the same idea with 4,326 customers. To compare two models, both are scored on the same drawn customers each time. Model C is £18.9 better than past spend in average error, with interval [£10.0, £29.1]. The interval stays above zero, so the gain is real, though small."
+        ]
+      }
     },
     {
       "id": "segments", "title": "Build the four segments",
-      "did": "A 2 x 2 grid: predicted spend (high or not) and probability of buying again (likely or not). The probability comes from a logistic regression on R, F, M.",
-      "why": "The cut-offs are business-sized and were fixed before looking at results: high value = the top 20% by predicted spend (£721 on train), likely = more than 50%. The logistic model ties XGBoost (AUC 0.778 vs 0.775) and is well calibrated, so the simplest model won. The earlier version of this project used K-Means, which turned out to split on just 'bought recently?', a rule a marketer can write by hand, so it was dropped.",
-      "found": "The segments are real and keep their order from train to test. Win back is nearly empty because valuable customers are almost always the ones likely to return. The top box is almost the same as a hand rule (top 20% by past spend who bought in the last 90 days).",
-      "source": "steps_followed_4.md, model_interpretation_4.md"
+      "did": "Gave every customer two yes/no answers and used the pair to pick one of four boxes. Value: is the model's predicted spend high? Return: is the customer more likely than not to buy again?",
+      "why": "Predicted spend alone cannot tell a loyal customer from a fading one, and a probability alone ignores how much they spend. Together they give four groups that call for different actions. The two cut-offs were chosen by us before looking at results, not tuned: high value = the top 20% of predicted spend (£721 on train), likely to return = probability above 50%.",
+      "found": "The groups are real: spend and return rates differ in the expected order, on train and again on test. Win back is nearly empty because valuable customers are almost always the ones likely to return. The top box is almost the same as a hand rule (top 20% by past spend who bought in the last 90 days), so the return probability is what sharpens the lower boxes.",
+      "source": "steps_followed_4.md, model_interpretation_4.md",
+      "aside": {
+        "title": "How a customer lands in a box, and where the probability comes from",
+        "code": "high value = predicted spend >= £721     likely to return = probability > 50%",
+        "text": "Where the probability comes from. A logistic regression. Its label is 1 if the customer spends anything in the next 6 months, otherwise 0. Its inputs are the logs of recency, frequency and past spend.\n\nWhy logistic regression. It scored AUC 0.778, a tie with XGBoost (0.775), and well above recency alone (0.693). Same result, simpler model, so we kept it.\n\nIs the probability honest? We checked calibration: when the model says 70%, do about 70 in 100 such customers really come back? In 10 equal bins, predicted and actual agreed closely (top bin 91.5% predicted, 93.4% actual; lowest 16% and 16%). No correction was needed, so none was applied. On the test period the levels shifted (57% bought again against 48% in train) but the order held, so re-check before relying on the 50% line.",
+        "example_title": "The rule, and four real customers from the test period",
+        "example": [
+          "High value and likely to return: Protect. High value but not likely: Win back. Not high value but likely: Grow. Neither: Low priority.",
+          "Customer 14530: predicted £1,160 (high), 75% (likely). Protect.",
+          "Customer 12511: predicted £929 (high), 28% (not likely). Win back.",
+          "Customer 13368: predicted £373 (not high), 57% (likely). Grow.",
+          "Customer 15407: predicted £116 (not high), 39% (not likely). Low priority."
+        ]
+      }
     },
     {
       "id": "shap", "title": "Explain what drives predictions",
@@ -85,7 +126,8 @@
       "did": "Picked the top 20% of customers by each rule and looked at the real money they spent next.",
       "why": "The earlier project called this an A/B test, but it had no treatment group, no cost and no causal effect. This version says what it measures: ranking, not campaign ROI.",
       "found": "Model C's top 20% spend {{top_c}} each against {{avg}} for the average customer. Sorting by past spend gives {{top_p}}: the model does not beat it for targeting.",
-      "source": "steps_followed_4.md, business_decisions_5.md"
+      "source": "steps_followed_4.md, business_decisions_5.md",
+      "table": "targeting"
     },
     {
       "id": "serve", "title": "Package it: model card, API, dashboard, site",

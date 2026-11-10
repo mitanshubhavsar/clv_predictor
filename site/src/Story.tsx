@@ -1,5 +1,5 @@
 import { gbp, img, num, pct } from "./lib";
-import type { Decision, FlowStage, Heuristics, Story, Summary } from "./types";
+import type { Decision, FlowStage, Heuristics, Story, Summary, TargetingRules, TrainExamples } from "./types";
 
 // Fill {{placeholders}} in the hand-written text from the saved summary, so these numbers cannot drift.
 function fill(text: string, s: Summary): string {
@@ -12,9 +12,45 @@ function fill(text: string, s: Summary): string {
   return text.replace(/\{\{(\w+)\}\}/g, (_, k: string) => vals[k] ?? "");
 }
 
-function StageTable({ stage, story, s }: { stage: FlowStage; story: Story; s: Summary }) {
+function TrainTable({ t }: { t: TrainExamples }) {
+  const f = (v: number | null, d = 2) => (v == null ? "blank" : v.toLocaleString("en-GB", { maximumFractionDigits: d }));
+  return (
+    <div className="scroll">
+      <table>
+        <caption>What the model is trained on: six of the {t.n_train.toLocaleString("en-GB")} training customers. Features X come from the 12 months before {t.cutoff}; the target y is what they spent in the 6 months after it.</caption>
+        <thead>
+          <tr><th>Customer</th><th>Recency (days)</th><th>Frequency</th><th>Monetary (£)</th><th>IPI (days)</th><th>Overdue ratio</th><th>Target y: future spend (£)</th><th>Label learned: y ÷ past spend</th></tr>
+        </thead>
+        <tbody>{t.rows.map((r) => (
+          <tr key={r.customer_id}><td>{r.customer_id}</td><td>{f(r.Recency, 0)}</td><td>{f(r.Frequency, 0)}</td><td>{f(r.Monetary, 0)}</td><td>{f(r.IPI)}</td><td>{f(r.OverdueRatio)}</td><td><strong>{f(r.target, 0)}</strong></td><td>{r.label_ratio.toFixed(2)}</td></tr>
+        ))}</tbody>
+      </table>
+      <p className="src">The first five columns are X (known at the cutoff). y is only known afterwards, so it is used to train and to score, never to predict. "Blank" = a customer who bought on only one day has no usual gap; XGBoost handles blanks directly.</p>
+    </div>
+  );
+}
+
+function RulesTable({ r }: { r: TargetingRules }) {
+  return (
+    <div className="scroll">
+      <table>
+        <caption>Test period, {r.n_test.toLocaleString("en-GB")} customers. Each rule ranks everyone, takes the top {r.n_top.toLocaleString("en-GB")} (20%), and we look at what those customers really spent in the next 6 months.</caption>
+        <thead><tr><th>Rule: how the 20% is chosen</th><th>Ranks customers by</th><th>Mean future spend</th><th>Against the average customer ({gbp(r.average_customer)})</th><th>Share of all future money</th></tr></thead>
+        <tbody>{r.rows.map((x) => (
+          <tr key={x.rule} className={x.rule === "Model C" ? "hl" : undefined}><td><strong>{x.rule}</strong></td><td>{x.ranks_by}</td><td>{gbp(x.mean_future_spend)}</td><td>{x.lift_vs_average === 0 ? "baseline" : `+${Math.round(x.lift_vs_average * 100)}%`}</td><td>{pct(x.share_of_money, 1)}</td></tr>
+        ))}</tbody>
+      </table>
+      <p className="src">Random is the floor and perfect ranking is the ceiling. Model C and past spend are almost identical. This measures who will spend, not who will respond to a campaign.</p>
+    </div>
+  );
+}
+
+function StageTable({ stage, story, s, train, rules }: { stage: FlowStage; story: Story; s: Summary; train: TrainExamples; rules: TargetingRules }) {
+  if (stage.table === "targeting") return <RulesTable r={rules} />;
   if (stage.table === "models") {
     return (
+      <>
+      <TrainTable t={train} />
       <div className="scroll">
         <table>
           <caption>Every model tried, 5-fold cross-validation on the training period</caption>
@@ -24,6 +60,7 @@ function StageTable({ stage, story, s }: { stage: FlowStage; story: Story; s: Su
           ))}</tbody>
         </table>
       </div>
+      </>
     );
   }
   if (stage.table === "features") {
@@ -42,13 +79,13 @@ function StageTable({ stage, story, s }: { stage: FlowStage; story: Story; s: Su
 
 const TURNING = new Set(["models", "test"]);
 
-export function Flow({ story, s }: { story: Story; s: Summary }) {
+export function Flow({ story, s, train, rules }: { story: Story; s: Summary; train: TrainExamples; rules: TargetingRules }) {
   return (
     <>
       <p>How the project went from raw invoices to a served model, in the order it happened, including the dead ends. Each stage says what was done, why, and what it showed.</p>
       <figure>
         <img src={img("flow.png")} alt="Thirteen stages in order: raw data, clean, time split, RFM features, study the target, baselines, try models, test features one by one, final model scored once, segments, SHAP, targeting, package" />
-        <figcaption>The thirteen stages. Orange marks the two turning points: no model beat the simple rule, and the test period was scored exactly once.</figcaption>
+        <figcaption>The thirteen stages. The test period was scored exactly once.</figcaption>
       </figure>
       <ol className="stages">
         {story.flow.map((st, i) => (
@@ -59,7 +96,20 @@ export function Flow({ story, s }: { story: Story; s: Summary }) {
               <dt>Why</dt><dd>{fill(st.why, s)}</dd>
               <dt>What we found</dt><dd className="found">{fill(st.found, s)}</dd>
             </dl>
-            <StageTable stage={st} story={story} s={s} />
+            {st.aside ? (
+              <aside className="aside">
+                <h4>{st.aside.title}</h4>
+                <pre>{st.aside.code}</pre>
+                {st.aside.text.split("\n\n").map((para) => <p key={para}>{para}</p>)}
+                {st.aside.example ? (
+                  <>
+                    <h5>{st.aside.example_title}</h5>
+                    <ul>{st.aside.example.map((t) => <li key={t}>{t}</li>)}</ul>
+                  </>
+                ) : null}
+              </aside>
+            ) : null}
+            <StageTable stage={st} story={story} s={s} train={train} rules={rules} />
             <p className="src">Notes: {st.source}</p>
           </li>
         ))}

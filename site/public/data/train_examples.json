@@ -1,0 +1,66 @@
+{
+ "cutoff": "2010-12-01",
+ "n_train": 4242,
+ "rows": [
+  {
+   "customer_id": "17982",
+   "Recency": 307.0,
+   "Frequency": 1.0,
+   "Monetary": 138.18,
+   "IPI": null,
+   "OverdueRatio": null,
+   "target": 0.0,
+   "label_ratio": 0.0
+  },
+  {
+   "customer_id": "16167",
+   "Recency": 41.0,
+   "Frequency": 5.0,
+   "Monetary": 1149.87,
+   "IPI": 108.0,
+   "OverdueRatio": 0.38,
+   "target": 0.0,
+   "label_ratio": 0.0
+  },
+  {
+   "customer_id": "15312",
+   "Recency": 10.0,
+   "Frequency": 8.0,
+   "Monetary": 1995.39,
+   "IPI": 48.57,
+   "OverdueRatio": 0.21,
+   "target": 604.15,
+   "label_ratio": 0.303
+  },
+  {
+   "customer_id": "17449",
+   "Recency": 14.0,
+   "Frequency": 6.0,
+   "Monetary": 2430.29,
+   "IPI": 68.6,
+   "OverdueRatio": 0.2,
+   "target": 1319.69,
+   "label_ratio": 0.543
+  },
+  {
+   "customer_id": "12709",
+   "Recency": 13.0,
+   "Frequency": 18.0,
+   "Monetary": 20411.23,
+   "IPI": 26.46,
+   "OverdueRatio": 0.49,
+   "target": 4229.5,
+   "label_ratio": 0.207
+  },
+  {
+   "customer_id": "14646",
+   "Recency": 1.0,
+   "Frequency": 78.0,
+   "Monetary": 245027.72,
+   "IPI": 8.07,
+   "OverdueRatio": 0.12,
+   "target": 110668.12,
+   "label_ratio": 0.452
+  }
+ ]
+}
